@@ -26,5 +26,7 @@ install(FILES
     bin_statistics_ff.h
     file_descriptor_sink.h
     file_descriptor_source.h
-    threshold_timestamp.h DESTINATION include/msod_sensor
+    threshold_timestamp.h
+    iqcapture.h
+    capture_sink.h DESTINATION include/msod_sensor
 )

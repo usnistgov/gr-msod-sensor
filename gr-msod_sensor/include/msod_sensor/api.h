@@ -19,15 +19,15 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef INCLUDED_MYBLOCKS_API_H
-#define INCLUDED_MYBLOCKS_API_H
+#ifndef INCLUDED_MSOD_SENSOR_API_H
+#define INCLUDED_MSOD_SENSOR_API_H
 
 #include <gnuradio/attributes.h>
 
 #ifdef gnuradio_msod_sensor_EXPORTS
-#  define MYBLOCKS_API __GR_ATTR_EXPORT
+#  define MSOD_SENSOR_API __GR_ATTR_EXPORT
 #else
-#  define MYBLOCKS_API __GR_ATTR_IMPORT
+#  define MSOD_SENSOR_API __GR_ATTR_IMPORT
 #endif
 
-#endif /* INCLUDED_MYBLOCKS_API_H */
+#endif /* INCLUDED_MSOD_SENSOR_API_H */

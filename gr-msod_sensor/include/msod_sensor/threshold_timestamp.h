@@ -33,7 +33,7 @@ namespace gr {
      * \ingroup msod_sensor
      *
      */
-    class MYBLOCKS_API threshold_timestamp : virtual public gr::sync_block
+    class MSOD_SENSOR_API threshold_timestamp : virtual public gr::sync_block
     {
      public:
       typedef boost::shared_ptr<threshold_timestamp> sptr;

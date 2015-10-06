@@ -33,7 +33,7 @@ namespace gr {
      * \ingroup msod_sensor
      *
      */
-    class MYBLOCKS_API bin_aggregator_ff : virtual public gr::sync_block
+    class MSOD_SENSOR_API bin_aggregator_ff : virtual public gr::sync_block
     {
      public:
       typedef boost::shared_ptr<bin_aggregator_ff> sptr;

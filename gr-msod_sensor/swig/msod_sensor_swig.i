@@ -1,6 +1,6 @@
 /* -*- c++ -*- */
 
-#define MYBLOCKS_API
+#define MSOD_SENSOR_API
 
 %include "gnuradio.i"			// the common stuff
 
@@ -13,6 +13,8 @@
 #include "msod_sensor/file_descriptor_sink.h"
 #include "msod_sensor/file_descriptor_source.h"
 #include "msod_sensor/threshold_timestamp.h"
+#include "msod_sensor/iqcapture.h"
+#include "msod_sensor/capture_sink.h"
 %}
 
 %include "msod_sensor/bin_aggregator_ff.h"
@@ -26,3 +28,7 @@ GR_SWIG_BLOCK_MAGIC2(msod_sensor, file_descriptor_sink);
 GR_SWIG_BLOCK_MAGIC2(msod_sensor, file_descriptor_source);
 %include "msod_sensor/threshold_timestamp.h"
 GR_SWIG_BLOCK_MAGIC2(msod_sensor, threshold_timestamp);
+%include "msod_sensor/iqcapture.h"
+GR_SWIG_BLOCK_MAGIC2(msod_sensor, iqcapture);
+%include "msod_sensor/capture_sink.h"
+GR_SWIG_BLOCK_MAGIC2(msod_sensor, capture_sink);
