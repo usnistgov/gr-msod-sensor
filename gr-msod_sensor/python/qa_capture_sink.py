@@ -22,19 +22,27 @@
 from gnuradio import gr, gr_unittest
 from gnuradio import blocks
 import msod_sensor_swig as capture
+import os
 
 class qa_capture_sink (gr_unittest.TestCase):
 
     def setUp (self):
+	for file in os.listdir("/tmp"):
+    		if file.startswith("capture"):
+			os.remove("/tmp/" + file)
         self.tb = gr.top_block ()
+	self.u = blocks.file_source(gr.sizeof_float,"/tmp/testdata.bin",False)
+	self.throttle = blocks.throttle(itemsize=gr.sizeof_float,samples_per_sec=1000)
+	self.tb.connect(self.u,self.throttle)
+        sqr = capture.capture_sink(itemsize=gr.sizeof_float, chunksize = 500, capture_dir="/tmp")
+	self.tb.connect(self.throttle,sqr)
 
     def tearDown (self):
         self.tb = None
 
     def test_001_t (self):
-        # set up fg
         self.tb.run ()
-        # check data
+        # check data TBD
 
 
 if __name__ == '__main__':

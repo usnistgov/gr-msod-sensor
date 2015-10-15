@@ -22,6 +22,7 @@
 #define INCLUDED_CAPTURE_CAPTURE_SINK_IMPL_H
 
 #include <msod_sensor/capture_sink.h>
+#include <fstream>
 
 namespace gr {
   namespace msod_sensor {
@@ -30,19 +31,25 @@ namespace gr {
     {
      private:
       // Nothing to declare in this block.
-      char* d_capture_dir;
-      int   d_itemsize;
-      char* d_websocket_url; 
+      char*  d_capture_dir;
+      int    d_itemsize;
+      char*  d_websocket_url; 
+      size_t d_chunksize;
+      long   d_itemcount;
+      std::ofstream d_logfile;
+      std::string* d_current_capture_file;
+
+      void generate_timestamp();
 
      public:
-      capture_sink_impl(size_t itemsize, char* capture_dir, char* websocket_url);
+      capture_sink_impl(size_t itemsize, size_t chunksize, char* capture_dir);
       ~capture_sink_impl();
-
       // Where all the action really happens
       int work(int noutput_items,
          gr_vector_const_void_star &input_items,
          gr_vector_void_star &output_items);
     };
+      
 
   } // namespace capture
 } // namespace gr

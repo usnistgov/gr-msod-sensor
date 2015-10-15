@@ -17,6 +17,12 @@
   </param>
 
   <param>
+    <name>chunk size</name>
+    <key>websocket_url</key>
+    <type>int</type>
+  </param>
+
+  <param>
     <name>Capture Dir</name>
     <key>capture_dir</key>
     <type>string</type>

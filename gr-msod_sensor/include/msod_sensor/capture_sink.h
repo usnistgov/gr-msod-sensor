@@ -46,7 +46,7 @@ namespace gr {
        * class. capture::capture_sink::make is the public interface for
        * creating new instances.
        */
-      static sptr make(size_t itemsize, char* capture_dir, char* websocket_url);
+      static sptr make(size_t itemsize, size_t chunksize, char* capture_dir);
     };
 
   } // namespace capture
