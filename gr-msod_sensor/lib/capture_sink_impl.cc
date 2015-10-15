@@ -22,7 +22,7 @@
 #include "config.h"
 #endif
 
-//#define IQCAPTURE_DEBUG
+#define IQCAPTURE_DEBUG
 
 
 #include <gnuradio/io_signature.h>
@@ -64,6 +64,9 @@ namespace gr {
 	this->d_chunksize = chunksize;
 	this->d_itemcount = 0;
 	this->generate_timestamp();
+	#ifdef IQCAPTURE_DEBUG
+	this->d_logfile.open("/tmp/capturelog.txt");
+	#endif
     }
 
     /*
@@ -110,8 +113,8 @@ namespace gr {
       char *out = (char *) output_items[0];
       unsigned int byte_size = noutput_items * this->d_itemsize;
       #ifdef IQCAPTURE_DEBUG 
-      this->logger << "capture_sink_impl::work: byte_size " << byte_size << "\n";
-      this->logger << "capture_sink_impl::work: noutput_items " << noutput_items << "\n";
+      this->d_logfile << "capture_sink_impl::work: byte_size " << byte_size << "\n";
+      this->d_logfile << "capture_sink_impl::work: noutput_items " << noutput_items << "\n";
       #endif
       int fd = open(this->d_current_capture_file->c_str(), O_APPEND | O_RDWR | O_CREAT, S_IWUSR | S_IRUSR);
       int buffercounter = 0;
