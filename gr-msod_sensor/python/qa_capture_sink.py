@@ -35,6 +35,7 @@ class qa_capture_sink (gr_unittest.TestCase):
 	self.throttle = blocks.throttle(itemsize=gr.sizeof_float,samples_per_sec=1000)
 	self.tb.connect(self.u,self.throttle)
         sqr = capture.capture_sink(itemsize=gr.sizeof_float, chunksize = 500, capture_dir="/tmp")
+	sqr.start_capture()
 	self.tb.connect(self.throttle,sqr)
 
     def tearDown (self):

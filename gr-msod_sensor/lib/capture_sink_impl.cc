@@ -26,15 +26,13 @@
 
 
 #include <gnuradio/io_signature.h>
+#include <gnuradio/prefs.h>
 #include "capture_sink_impl.h"
 #include <ctime>
 #include <fstream>
 #include <iostream>
 #ifdef IQCAPTURE_DEBUG
-#include <boost/log/trivial.hpp>
-namespace logging = boost::log;
-namespace src = boost::log::sources;
-namespace sinks = boost::log::sinks;
+#include <gnuradio/logger.h>
 #endif
 
 
@@ -65,7 +63,9 @@ namespace gr {
 	this->d_itemcount = 0;
 	this->generate_timestamp();
 	#ifdef IQCAPTURE_DEBUG
-	this->d_logfile.open("/tmp/capturelog.txt");
+	prefs *p = prefs::singleton();
+	std::string log_level = p->get_string("LOG", "log_level", "debug");
+	GR_LOG_SET_LEVEL(d_debug_logger,log_level);
 	#endif
     }
 
@@ -104,6 +104,17 @@ namespace gr {
 	this->d_current_capture_file =  dirname;
     }
 
+    void
+    capture_sink_impl::start_capture() {
+	this->d_start_capture = std::true;
+    }
+
+    void
+    capture_sink_impl::stop_capture() {
+	this->d_start_capture = std::false;
+    }
+
+
     int
     capture_sink_impl::work(int noutput_items,
         gr_vector_const_void_star &input_items,
@@ -113,8 +124,8 @@ namespace gr {
       char *out = (char *) output_items[0];
       unsigned int byte_size = noutput_items * this->d_itemsize;
       #ifdef IQCAPTURE_DEBUG 
-      this->d_logfile << "capture_sink_impl::work: byte_size " << byte_size << "\n";
-      this->d_logfile << "capture_sink_impl::work: noutput_items " << noutput_items << "\n";
+      GR_LOG_DEBUG(d_debug_logger,"capture_sink_impl::work byte_size " + std::to_string(byte_size));
+      GR_LOG_DEBUG(d_debug_logger,"capture_sink_impl::work noutput_items " + std::to_string(noutput_items));
       #endif
       int fd = open(this->d_current_capture_file->c_str(), O_APPEND | O_RDWR | O_CREAT, S_IWUSR | S_IRUSR);
       int buffercounter = 0;

@@ -36,6 +36,7 @@ namespace gr {
       char*  d_websocket_url; 
       size_t d_chunksize;
       long   d_itemcount;
+      bool   d_start_capture;
       std::ofstream d_logfile;
       std::string* d_current_capture_file;
 
@@ -48,6 +49,11 @@ namespace gr {
       int work(int noutput_items,
          gr_vector_const_void_star &input_items,
          gr_vector_void_star &output_items);
+      // start capture
+      void start_capture();
+
+      // stop capture
+      void stop_capture();
     };
       
 

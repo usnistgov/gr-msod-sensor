@@ -47,6 +47,17 @@ namespace gr {
        * creating new instances.
        */
       static sptr make(size_t itemsize, size_t chunksize, char* capture_dir);
+
+      /*!
+       * \brief Start capture
+       */
+      virtual void start_capture() = 0;
+
+      /*!
+       * \brief Stop capture.
+       */
+      virtual void stop_capture() = 0;
+
     };
 
   } // namespace capture
