@@ -8,7 +8,7 @@
 
 // Compile with 
 // g++ generate-samples.cc  -std=c++11 -o generate-samples
-
+using namespace std;
 int main() {
 	std::default_random_engine generator;
   	std::uniform_real_distribution<float> distribution(-1.0,1.0);

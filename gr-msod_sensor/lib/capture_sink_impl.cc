@@ -106,12 +106,12 @@ namespace gr {
 
     void
     capture_sink_impl::start_capture() {
-	this->d_start_capture = std::true;
+	this->d_start_capture = true;
     }
 
     void
     capture_sink_impl::stop_capture() {
-	this->d_start_capture = std::false;
+	this->d_start_capture = false;
     }
 
 
@@ -120,6 +120,9 @@ namespace gr {
         gr_vector_const_void_star &input_items,
         gr_vector_void_star &output_items)
     {
+      // Capture is not enabled.
+      if (!this->d_start_capture) return noutput_items;
+      // Capture is enabled.
       const char *in = (const char *) input_items[0];
       char *out = (char *) output_items[0];
       unsigned int byte_size = noutput_items * this->d_itemsize;

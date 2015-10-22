@@ -34,16 +34,36 @@ class qa_capture_sink (gr_unittest.TestCase):
 	self.u = blocks.file_source(gr.sizeof_float,"/tmp/testdata.bin",False)
 	self.throttle = blocks.throttle(itemsize=gr.sizeof_float,samples_per_sec=1000)
 	self.tb.connect(self.u,self.throttle)
-        sqr = capture.capture_sink(itemsize=gr.sizeof_float, chunksize = 500, capture_dir="/tmp")
-	sqr.start_capture()
-	self.tb.connect(self.throttle,sqr)
+        self.sqr = capture.capture_sink(itemsize=gr.sizeof_float, chunksize = 500, capture_dir="/tmp")
+	self.tb.connect(self.throttle,self.sqr)
+	size = 0
 
     def tearDown (self):
         self.tb = None
+	for file in os.listdir("/tmp"):
+    		if file.startswith("capture"):
+			os.remove("/tmp/" + file)
 
     def test_001_t (self):
+	print "test_001_t"
+	self.sqr.start_capture()
         self.tb.run ()
+	size = 0
+	for file in os.listdir("/tmp"):
+    		if file.startswith("capture"):
+			stat = os.stat("/tmp/" + file)
+			size = size + stat.st_size 
+	original_file_size = os.stat("/tmp/testdata.bin").st_size
+	print "original file size ", original_file_size, " capture file size ", size
+	self.assertEquals(size,original_file_size)
         # check data TBD
+
+    def test_002_t (self):
+	self.sqr.stop_capture()
+        self.tb.run ()
+	for file in os.listdir("/tmp"):
+    		if file.startswith("capture"):
+			self.fail("File should not exist")
 
 
 if __name__ == '__main__':
