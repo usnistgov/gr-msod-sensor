@@ -23,7 +23,7 @@
 include(GrPlatform) #define LIB_SUFFIX
 
 include_directories(${Boost_INCLUDE_DIR})
-link_directories(${Boost_LIBRARY_DIRS})
+link_directories(${Boost_LIBRARY_DIRS} ${MONGO_CLIENT_DIR}/lib)
 list(APPEND msod_sensor_sources
     bin_aggregator_ff_impl.cc
     bin_statistics_ff_impl.cc
@@ -35,7 +35,7 @@ list(APPEND msod_sensor_sources
 
 add_library(gnuradio-msod_sensor SHARED ${msod_sensor_sources})
 #target_link_libraries(gnuradio-msod_sensor ${Boost_LIBRARIES} ${GNURADIO_RUNTIME_LIBRARIES})
-target_link_libraries(gnuradio-msod_sensor ${Boost_LIBRARIES} ${GNURADIO_ALL_LIBRARIES})
+target_link_libraries(gnuradio-msod_sensor ${Boost_LIBRARIES} ${GNURADIO_ALL_LIBRARIES} libmongoclient.a)
 set_target_properties(gnuradio-msod_sensor PROPERTIES DEFINE_SYMBOL "gnuradio_msod_sensor_EXPORTS")
 
 ########################################################################

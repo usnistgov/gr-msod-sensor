@@ -103,7 +103,7 @@ class my_top_block(gr.top_block):
                 print "Note: failed to enable realtime scheduling"
 
         # build graph
-	self.u = blocks.file_source(gr.sizeof_gr_complex,"testdata.bin",True)
+	self.u = blocks.file_source(gr.sizeof_gr_complex,"/tmp/testdata.bin",True)
 	
 	print "samp_rate ", options.samp_rate
         

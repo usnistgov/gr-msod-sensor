@@ -58,6 +58,11 @@ namespace gr {
        */
       virtual void stop_capture() = 0;
 
+      /*!
+       * \brief set the data message
+       */
+      virtual void set_data_message(char* data_message) = 0;
+
     };
 
   } // namespace capture

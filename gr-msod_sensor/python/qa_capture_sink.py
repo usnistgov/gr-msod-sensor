@@ -23,6 +23,32 @@ from gnuradio import gr, gr_unittest
 from gnuradio import blocks
 import msod_sensor_swig as capture
 import os
+import json
+import time
+import pymongo
+global mongoclient
+
+class Struct(dict):
+    def __init__(self, **kwargs):
+	super(Struct, self).__init__(**kwargs)
+	self.__dict__ = self
+
+def generate_data_message():
+    f_start = 703990000
+    f_stop  = 714994000
+    num_ch = 56
+    atten = 30
+    meas_duration = 100
+    sensor_id = "TestSensor"
+    mpar = Struct(fStart=f_start, fStop=f_stop, n=num_ch, td=-1, tm=meas_duration, Det='Peak', Atten=atten)
+    # Need to add a field for overflow indicator
+    ts = int(time.time())
+    data = Struct(Ver='1.0.12', Type='Data', SensorID=sensor_id, SensorKey='NaN', t=ts, Sys2Detect='LTE', \
+	Sensitivity='Low', mType='FFT-Power', t1=ts, a=1, nM=-1, Ta=-1, OL='NaN', wnI=-77.0, \
+	Comment='Using hard-coded (not detected) system noise power for wnI', \
+	Processed='False', DataType = 'Binary - int8', ByteOrder='N/A', Compression='None', mPar=mpar)
+    return json.dumps(data)
+
 
 class qa_capture_sink (gr_unittest.TestCase):
 
@@ -36,7 +62,6 @@ class qa_capture_sink (gr_unittest.TestCase):
 	self.tb.connect(self.u,self.throttle)
         self.sqr = capture.capture_sink(itemsize=gr.sizeof_float, chunksize = 500, capture_dir="/tmp")
 	self.tb.connect(self.throttle,self.sqr)
-	size = 0
 
     def tearDown (self):
         self.tb = None
@@ -47,16 +72,24 @@ class qa_capture_sink (gr_unittest.TestCase):
     def test_001_t (self):
 	print "test_001_t"
 	self.sqr.start_capture()
+	initialCount = 0
+	self.sqr.set_data_message(generate_data_message())
         self.tb.run ()
 	size = 0
+	count = 0
 	for file in os.listdir("/tmp"):
     		if file.startswith("capture"):
 			stat = os.stat("/tmp/" + file)
 			size = size + stat.st_size 
+			count = count + 1
 	original_file_size = os.stat("/tmp/testdata.bin").st_size
-	print "original file size ", original_file_size, " capture file size ", size
+	print "original file size ", original_file_size, " capture file size ", size, " count ", count
 	self.assertEquals(size,original_file_size)
         # check data TBD
+	metadata = mongoclient.iqcapture.dataMessages.find({"SensorID":"TestSensor"})
+	print "metadata count ", metadata.count()
+	self.assertEquals(metadata.count(),count)
+	
 
     def test_002_t (self):
 	self.sqr.stop_capture()
@@ -67,4 +100,7 @@ class qa_capture_sink (gr_unittest.TestCase):
 
 
 if __name__ == '__main__':
+    global mongoclient
+    mongoclient = pymongo.MongoClient("127.0.0.1")
+    mongoclient.iqcapture.dataMessages.drop()
     gr_unittest.run(qa_capture_sink, "qa_capture_sink.xml")

@@ -21,6 +21,8 @@
 #ifndef INCLUDED_CAPTURE_CAPTURE_SINK_IMPL_H
 #define INCLUDED_CAPTURE_CAPTURE_SINK_IMPL_H
 
+#include <mongo/client/dbclient.h>
+#include <mongo/bson/bson.h>
 #include <msod_sensor/capture_sink.h>
 #include <fstream>
 
@@ -37,8 +39,12 @@ namespace gr {
       size_t d_chunksize;
       long   d_itemcount;
       bool   d_start_capture;
+      long   d_capture_freq;
+      mongo::BSONObj d_data_message;
       std::ofstream d_logfile;
       std::string* d_current_capture_file;
+      mongo::DBClientConnection d_mongo_client;
+      
 
       void generate_timestamp();
 
@@ -54,6 +60,10 @@ namespace gr {
 
       // stop capture
       void stop_capture();
+
+      // set the sensor id (for posting to the database).
+      void set_data_message(char* data_message);
+
     };
       
 
