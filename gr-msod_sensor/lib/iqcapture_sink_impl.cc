@@ -90,6 +90,8 @@ iqcapture_sink_impl::capture() {
         buffercounter += d_itemsize;
         int written = write(fd,*p,d_itemsize);
     }
+    this->d_capture_queue.clear();
+    this->d_itemcount = 0;
     time_t  timev;
     time(&timev);
     mongo::BSONObjBuilder builder;
@@ -164,12 +166,14 @@ iqcapture_sink_impl::work(int noutput_items,
             char* item = this->d_capture_queue.back();
             this->d_capture_queue.pop_back();
             delete item;
+	    this->d_itemcount --;
         }
         char* item = (char*) in + buffercounter;
 	char* newitem = new char[d_itemsize];
 	memcpy(newitem,item,d_itemsize);
-        this->d_capture_queue.push_front(item);
+        this->d_capture_queue.push_front(newitem);
 	buffercounter ++;
+	this->d_itemcount++;
     }
     return noutput_items;
 }
