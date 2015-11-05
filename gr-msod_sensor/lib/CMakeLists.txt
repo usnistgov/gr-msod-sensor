@@ -30,8 +30,8 @@ list(APPEND msod_sensor_sources
     file_descriptor_sink_impl.cc
     file_descriptor_source_impl.cc
     threshold_timestamp_impl.cc
-    iqcapture_impl.cc
-    capture_sink_impl.cc )
+    capture_sink_impl.cc
+    iqcapture_sink_impl.cc )
 
 add_library(gnuradio-msod_sensor SHARED ${msod_sensor_sources})
 #target_link_libraries(gnuradio-msod_sensor ${Boost_LIBRARIES} ${GNURADIO_RUNTIME_LIBRARIES})

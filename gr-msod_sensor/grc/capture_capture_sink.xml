@@ -4,7 +4,7 @@
   <key>capture_capture_sink</key>
   <category>capture</category>
   <import>import capture</import>
-  <make>capture.capture_sink($itemsize, $capture_dir, $websocket_url)</make>
+  <make>capture.capture_sink($itemsize, $chunk_size, $capture_dir)</make>
   <!-- Make one 'param' node for every Parameter you want settable from the GUI.
        Sub-nodes:
        * name
@@ -18,7 +18,7 @@
 
   <param>
     <name>chunk size</name>
-    <key>websocket_url</key>
+    <key>chunk_size</key>
     <type>int</type>
   </param>
 
@@ -28,11 +28,6 @@
     <type>string</type>
   </param>
 
-  <param>
-    <name>websocket url</name>
-    <key>websocket_url</key>
-    <type>string</type>
-  </param>
   <!-- Make one 'sink' node per input. Sub-nodes:
        * name (an identifier for the GUI)
        * type
