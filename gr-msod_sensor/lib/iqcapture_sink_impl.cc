@@ -24,6 +24,7 @@
 
 #include <gnuradio/io_signature.h>
 #include <gnuradio/prefs.h>
+#include <pmt/pmt.h>
 #include "iqcapture_sink_impl.h"
 
 #define IQCAPTURE_DEBUG
@@ -51,7 +52,8 @@ iqcapture_sink_impl::iqcapture_sink_impl(size_t itemsize, size_t chunksize, char
     this->d_chunksize = chunksize;
     this->d_itemcount = 0;
     this->d_current_capture_file = NULL;
-    this->generate_timestamp();
+    message_port_register_in(pmt::mp("capture"));
+    set_msg_handler(pmt::mp("capture"),boost::bind(&iqcapture_sink_impl::capture, this, _1));
     std::string errmsg;
     try {
         if (!this->d_mongo_client.connect(std::string("127.0.0.1:") + "27017",errmsg)) {
@@ -80,16 +82,25 @@ iqcapture_sink_impl::~iqcapture_sink_impl()
 // Write out whatever is in our capture buffer to a file.
 // This is done on signal from an external entity
 void
-iqcapture_sink_impl::capture() {
+iqcapture_sink_impl::capture(pmt::pmt_t msg) {
     generate_timestamp();
+#ifdef IQCAPTURE_DEBUG
+    GR_LOG_DEBUG(d_debug_logger,"capture_sink_imp::capture")
+#endif
     int fd = open(this->d_current_capture_file->c_str(), O_APPEND | O_RDWR | O_CREAT, S_IWUSR | S_IRUSR);
     int buffercounter = 0;
+    int itemcount = 0;
     // Write the items out from the buffer.
     for (std::list<char*>::iterator p  = this->d_capture_queue.begin();
             p != this->d_capture_queue.end(); p++) {
         buffercounter += d_itemsize;
         int written = write(fd,*p,d_itemsize);
+	itemcount ++;
     }
+    close(fd);
+#ifdef IQCAPTURE_DEBUG
+    GR_LOG_DEBUG(d_debug_logger,"capture_sink_imp::capture wrote " + std::to_string(buffercounter) + " bytes; itemcount = " + std::to_string(itemcount));
+#endif
     this->d_capture_queue.clear();
     this->d_itemcount = 0;
     time_t  timev;
@@ -172,7 +183,7 @@ iqcapture_sink_impl::work(int noutput_items,
 	char* newitem = new char[d_itemsize];
 	memcpy(newitem,item,d_itemsize);
         this->d_capture_queue.push_front(newitem);
-	buffercounter ++;
+	buffercounter += this->d_itemsize;
 	this->d_itemcount++;
     }
     return noutput_items;

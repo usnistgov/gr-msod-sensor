@@ -15,6 +15,7 @@
 #include "msod_sensor/threshold_timestamp.h"
 #include "msod_sensor/capture_sink.h"
 #include "msod_sensor/iqcapture_sink.h"
+#include "msod_sensor/dummy_capture_trigger.h"
 %}
 
 %include "msod_sensor/bin_aggregator_ff.h"
@@ -34,3 +35,6 @@ GR_SWIG_BLOCK_MAGIC2(msod_sensor, capture_sink);
 
 %include "msod_sensor/iqcapture_sink.h"
 GR_SWIG_BLOCK_MAGIC2(msod_sensor, iqcapture_sink);
+
+%include "msod_sensor/dummy_capture_trigger.h"
+GR_SWIG_BLOCK_MAGIC2(msod_sensor, dummy_capture_trigger);

@@ -26,6 +26,7 @@
 #include <mongo/client/dbclient.h>
 #include <mongo/bson/bson.h>
 #include <msod_sensor/capture_sink.h>
+#include <pmt/pmt.h>
 #include <fstream>
 #include <list>
 namespace gr {
@@ -50,15 +51,15 @@ namespace gr {
       std::list<char*> d_capture_queue;
 
       void generate_timestamp();
+      // start capture and write out whatever is in the buffer.
+      // This is triggered by an external trigger (for example something that detects
+      // LTE downlink).
+      void capture(pmt::pmt_t msg);
      public:
       iqcapture_sink_impl(size_t itemsize, size_t chunksize, char* capture_dir);
       ~iqcapture_sink_impl();
       // set the sensor id (for posting to the database).
       void set_data_message(char* data_message);
-      // start capture and write out whatever is in the buffer.
-      // This is triggered by an external trigger (for example something that detects
-      // LTE downlink).
-      void capture();
       // Where all the action really happens
       int work(int noutput_items,
          gr_vector_const_void_star &input_items,

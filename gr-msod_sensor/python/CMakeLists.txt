@@ -47,3 +47,4 @@ GR_ADD_TEST(qa_bin_statistics_ff ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR
 GR_ADD_TEST(qa_threshold_timestamp ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/qa_threshold_timestamp.py)
 GR_ADD_TEST(qa_capture_sink ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/qa_capture_sink.py)
 GR_ADD_TEST(qa_iqcapture_sink ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/qa_iqcapture_sink.py)
+GR_ADD_TEST(qa_dummy_capture_trigger ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/qa_dummy_capture_trigger.py)
