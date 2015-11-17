@@ -30,7 +30,7 @@ from optparse import OptionParser
 import sys
 import math
 import threading
-import myblocks
+import msod_sensor as myblocks
 import array
 import time
 import json
@@ -41,7 +41,7 @@ import requests
 import numpy
 import struct
 import os
-sys.path.insert(0,os.environ['SPECTRUM_BROWSER_HOME']+'/flask')
+sys.path.insert(0,os.environ['SPECTRUM_BROWSER_HOME']+'/services/common')
 from timezone import getLocalUtcTimeStamp, formatTimeStampLong
 
 class Struct(dict):
@@ -163,8 +163,8 @@ class my_top_block(gr.top_block):
 	channel_bw = hz_per_bin * round(self.bandwidth / self.num_ch / hz_per_bin)
 	self.bandwidth = channel_bw * self.num_ch
 	print "Actual width of band is", self.bandwidth/1e6, "MHz."
-	start_freq = self.center_freq - self.bandwidth/2.0
-	stop_freq = start_freq + self.bandwidth
+	start_freq = int(self.center_freq - self.bandwidth/2.0 -0.5)
+	stop_freq = int (start_freq + self.bandwidth +0.5)
 	for j in range(self.fft_size):
 	    fj = self.bin_freq(j, self.center_freq)
 	    if (fj >= start_freq) and (fj < stop_freq):
@@ -268,47 +268,78 @@ class my_top_block(gr.top_block):
         return obj
 
 def main_loop(tb):
-    
+    print 'starting main loop' 
     if not tb.set_freq(tb.center_freq):
         print "Failed to set frequency to", tb.center_freq
         sys.exit(1)
     print "Set frequency to", tb.center_freq/1e6, "MHz"
     time.sleep(0.25)
-
+  
+    print 'host:',tb.dest_host
     # Establish ssl socket connection to server
-    sensor_id = tb.u.get_usrp_info()['rx_serial']
+    #sensor_id = tb.u.get_usrp_info()['rx_serial']
+    #sensor_id="E2R20PEUP"
+    sensor_id='E6R16W5XS'
+    #port=8443
+    print 'Sensor ID:',sensor_id
     r = requests.post('https://'+tb.dest_host+':443/sensordata/getStreamingPort/'+sensor_id, verify=False)
-    print 'server response:', r.text
-    response = r.json()
-    print 'socket port =', response['port']
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    tb.s = s = ssl.wrap_socket(sock, ca_certs='dummy.crt', cert_reqs=ssl.CERT_OPTIONAL)
-    s.connect((tb.dest_host, response['port']))
-    tb.set_sock(s)
+    print 'Requestion port on:'+ 'https://'+tb.dest_host+':443/sensordata/getStreamingPort/'+sensor_id 
 
+    print 'server response:', r.text
+    json = r.json()
+    print 'made json' 
+    port = json["port"]
+    print 'socket port =',port #, response['port']
+
+
+    print 'Requestion port on:'+ 'https://'+tb.dest_host+':443/sensordb/getSensorConfig/'+sensor_id
+    r = requests.post('https://'+tb.dest_host+':443/sensordb/getSensorConfig/'+sensor_id, verify=False)
+    print 'server response:', r.text
+    json = r.json()
+    print 'made json' 
+    #port = json["port"]
+    #print 'socket port =', response['port']
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    print 'created socket'
+    #s  = ssl.wrap_socket(sock)
+    tb.s = s = ssl.wrap_socket(sock)
+    host=tb.dest_host
+    print 'created ssl socket'
+    s.connect((host,port))
+    print 'connected socket'
+    tb.set_sock(s)
+    print 'sock is set'
     # Send location and system info to server
     loc_msg = tb.read_json_from_file('sensor.loc')
     sys_msg = tb.read_json_from_file('sensor.sys')
+    print 'read in files'
     ts = long(round(getLocalUtcTimeStamp()))
+    print 'ts is', ts
     print 'Serial no.', sensor_id
     loc_msg['t'] = ts
     loc_msg['SensorID'] = sensor_id 
     sys_msg['t'] = ts
-    sys_msg['SensorID'] = sensor_id 
+    sys_msg['SensorID'] = sensor_id
+    print 'sending data to server' 
     tb.send_obj(loc_msg)
-    tb.send_obj(sys_msg)
-
+    #s.send_obj(loc_msg)
+    print 'sent loc_msg'
+    #tb.send_obj(sys_msg)
+    print 'sent sys_msg'
     # Form data header
     ts = long(round(getLocalUtcTimeStamp()))
-    f_start = tb.center_freq - tb.bandwidth / 2.0
-    f_stop = f_start + tb.bandwidth
+    f_start = int(tb.center_freq - tb.bandwidth / 2.0 -0.5)
+    f_stop = int (f_start + tb.bandwidth + 0.5)
+    print 'found f_start & f_stop'
     mpar = Struct(fStart=f_start, fStop=f_stop, n=tb.num_ch, td=-1, tm=tb.meas_duration, Det='Average' if tb.det_type=='avg' else 'Peak', Atten=tb.atten)
+    print 'mpar done'
     # Need to add a field for overflow indicator
     data = Struct(Ver='1.0.12', Type='Data', SensorID=sensor_id, SensorKey='NaN', t=ts, Sys2Detect='LTE', Sensitivity='Low', mType='FFT-Power', t1=ts, a=1, nM=-1, Ta=-1, OL='NaN', wnI=-77.0, Comment='Using hard-coded (not detected) system noise power for wnI', Processed='False', DataType = 'Binary - int8', ByteOrder='N/A', Compression='None', mPar=mpar)
-
+    print 'made data struct'
+    
     tb.send_obj(data)
-    date_str = formatTimeStampLong(ts, loc_msg['TimeZone'])
-    print date_str, "fc =", tb.center_freq/1e6, "MHz. Sending data to", tb.dest_host
+    #date_str = formatTimeStampLong(ts, loc_msg['TimeZone'])
+    print "fc =", tb.center_freq/1e6, "MHz. Sending data to", tb.dest_host
 
     # Start flow graph
     tb.start()
