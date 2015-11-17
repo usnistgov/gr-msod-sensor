@@ -19,38 +19,38 @@
  */
 
 
-#ifndef INCLUDED_CAPTURE_IQCAPTURE_H
-#define INCLUDED_CAPTURE_IQCAPTURE_H
+#ifndef INCLUDED_MSOD_SENSOR_DUMMY_CAPTURE_TRIGGER_H
+#define INCLUDED_MSOD_SENSOR_DUMMY_CAPTURE_TRIGGER_H
 
 #include <msod_sensor/api.h>
-#include <gnuradio/block.h>
+#include <gnuradio/sync_block.h>
 
 namespace gr {
   namespace msod_sensor {
 
     /*!
      * \brief <+description of block+>
-     * \ingroup capture
+     * \ingroup msod_sensor
      *
      */
-    class MSOD_SENSOR_API iqcapture : virtual public gr::block
+    class MSOD_SENSOR_API dummy_capture_trigger : virtual public gr::sync_block
     {
      public:
-      typedef boost::shared_ptr<iqcapture> sptr;
+      typedef boost::shared_ptr<dummy_capture_trigger> sptr;
 
       /*!
-       * \brief Return a shared_ptr to a new instance of capture::iqcapture.
+       * \brief Return a shared_ptr to a new instance of msod_sensor::dummy_capture_trigger.
        *
-       * To avoid accidental use of raw pointers, capture::iqcapture's
+       * To avoid accidental use of raw pointers, msod_sensor::dummy_capture_trigger's
        * constructor is in a private implementation
-       * class. capture::iqcapture::make is the public interface for
+       * class. msod_sensor::dummy_capture_trigger::make is the public interface for
        * creating new instances.
        */
       static sptr make(size_t itemsize);
     };
 
-  } // namespace capture
+  } // namespace msod_sensor
 } // namespace gr
 
-#endif /* INCLUDED_CAPTURE_IQCAPTURE_H */
+#endif /* INCLUDED_MSOD_SENSOR_DUMMY_CAPTURE_TRIGGER_H */
 

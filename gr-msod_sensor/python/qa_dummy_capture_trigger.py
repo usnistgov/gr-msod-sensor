@@ -21,34 +21,39 @@
 
 from gnuradio import gr, gr_unittest
 from gnuradio import blocks
+import os
 import msod_sensor_swig as capture
 
-class qa_iqcapture (gr_unittest.TestCase):
-
+class qa_dummy_capture_trigger (gr_unittest.TestCase):
     def setUp (self):
         self.tb = gr.top_block ()
+	for file in os.listdir("/tmp"):
+    		if file.startswith("capture"):
+			os.remove("/tmp/" + file)
+        self.tb = gr.top_block ()
+	self.u = blocks.file_source(gr.sizeof_float,"/tmp/testdata.bin",False)
+	self.throttle = blocks.throttle(itemsize=gr.sizeof_float,samples_per_sec=1000)
+	self.tb.connect(self.u,self.throttle)
+        self.sqr = capture.iqcapture_sink(itemsize=gr.sizeof_float, chunksize = 500, capture_dir="/tmp")
+	self.tb.connect(self.throttle,self.sqr)
+	self.trigger = capture.dummy_capture_trigger(itemsize=gr.sizeof_float)
+	self.tb.connect(self.throttle,self.trigger)
+	self.tb.msg_connect(self.trigger,"trigger",self.sqr,"capture")
+
+
+    def test_001_t (self):
+        # set up fg
+        self.tb.run ()
+        # check data
 
     def tearDown (self):
         self.tb = None
 
     def test_001_t (self):
-	print "Test capture"
-        src_data = (7, 4, 5, 2, 4)
-        expected_result= (7, 4, 5, 2, 4)
-        src = blocks.vector_source_f(src_data)
-        sqr = capture.iqcapture(4)
-        dst = blocks.vector_sink_f()
-        self.tb.connect(src, sqr)
-        self.tb.connect(sqr, dst)
-        self.tb.run()
-        result_data = dst.data()
-        print "result_data", result_data
-        self.assertFloatTuplesAlmostEqual(expected_result, result_data, 4)
-
         # set up fg
-        #self.tb.run ()
+        self.tb.run ()
         # check data
 
 
 if __name__ == '__main__':
-    gr_unittest.run(qa_iqcapture, "qa_iqcapture.xml")
+    gr_unittest.run(qa_dummy_capture_trigger, "qa_dummy_capture_trigger.xml")

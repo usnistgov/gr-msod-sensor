@@ -18,37 +18,32 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef INCLUDED_CAPTURE_IQCAPTURE_IMPL_H
-#define INCLUDED_CAPTURE_IQCAPTURE_IMPL_H
+#ifndef INCLUDED_MSOD_SENSOR_DUMMY_CAPTURE_TRIGGER_IMPL_H
+#define INCLUDED_MSOD_SENSOR_DUMMY_CAPTURE_TRIGGER_IMPL_H
 
-#include <msod_sensor/iqcapture.h>
-#include <cstddef>
-
-using namespace std;
+#include <msod_sensor/dummy_capture_trigger.h>
 
 namespace gr {
   namespace msod_sensor {
 
-    class iqcapture_impl : public iqcapture
+    class dummy_capture_trigger_impl : public dummy_capture_trigger
     {
      private:
-      size_t d_itemsize;
-
+	int d_itemcount;
+	int d_itemsize;
+	
      public:
-      iqcapture_impl(size_t itemsize);
-      ~iqcapture_impl();
+      dummy_capture_trigger_impl(size_t itemsize);
+      ~dummy_capture_trigger_impl();
 
       // Where all the action really happens
-      void forecast (int noutput_items, gr_vector_int &ninput_items_required);
-
-      int general_work(int noutput_items,
-           gr_vector_int &ninput_items,
-           gr_vector_const_void_star &input_items,
-           gr_vector_void_star &output_items);
+      int work(int noutput_items,
+         gr_vector_const_void_star &input_items,
+         gr_vector_void_star &output_items);
     };
 
-  } // namespace capture
+  } // namespace msod_sensor
 } // namespace gr
 
-#endif /* INCLUDED_CAPTURE_IQCAPTURE_IMPL_H */
+#endif /* INCLUDED_MSOD_SENSOR_DUMMY_CAPTURE_TRIGGER_IMPL_H */
 

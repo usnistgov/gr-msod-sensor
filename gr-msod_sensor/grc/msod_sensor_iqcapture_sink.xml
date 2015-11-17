@@ -1,16 +1,33 @@
 <?xml version="1.0"?>
 <block>
-  <name>iqcapture</name>
-  <key>msod_sensor_iqcapture</key>
+  <name>iqcapture_sink</name>
+  <key>msod_sensor_iqcapture_sink</key>
   <category>msod_sensor</category>
   <import>import msod_sensor</import>
-  <make>msod_sensor.iqcapture($itemsize)</make>
+  <make>msod_sensor.iqcapture_sink($itemsize, $chunksize, $capture_dir)</make>
+  <!-- Make one 'param' node for every Parameter you want settable from the GUI.
+       Sub-nodes:
+       * name
+       * key (makes the value accessible as $keyname, e.g. in the make node)
+       * type -->
+
   <param>
     <name>Item size</name>
     <key>itemsize</key>
     <type>int</type>
   </param>
 
+  <param>
+    <name>chunk size</name>
+    <key>chunk_size</key>
+    <type>int</type>
+  </param>
+
+  <param>
+    <name>Capture Dir</name>
+    <key>capture_dir</key>
+    <type>string</type>
+  </param>
   <!-- Make one 'sink' node per input. Sub-nodes:
        * name (an identifier for the GUI)
        * type
@@ -28,6 +45,6 @@
        * optional (set to 1 for optional inputs) -->
   <source>
     <name>out</name>
-    <type>float</type>
+    <type><!-- e.g. int, float, complex, byte, short, xxx_vector, ...--></type>
   </source>
 </block>
