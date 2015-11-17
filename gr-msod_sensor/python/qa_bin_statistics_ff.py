@@ -24,7 +24,7 @@ from gnuradio import blocks
 import msod_sensor_swig as msod_sensor
 
 class qa_bin_statistics_ff (gr_unittest.TestCase):
-
+	#print msod_sensor_swig.path
     def setUp (self):
         self.tb = gr.top_block ()
 
