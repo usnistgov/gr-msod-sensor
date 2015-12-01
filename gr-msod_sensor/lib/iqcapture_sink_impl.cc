@@ -33,16 +33,16 @@ namespace gr {
 namespace msod_sensor {
 
 iqcapture_sink::sptr
-iqcapture_sink::make(size_t itemsize, size_t chunksize, char* capture_dir)
+iqcapture_sink::make(size_t itemsize, size_t chunksize, char* capture_dir, int mongodb_port)
 {
     return gnuradio::get_initial_sptr
-           (new iqcapture_sink_impl(itemsize, chunksize, capture_dir));
+           (new iqcapture_sink_impl(itemsize, chunksize, capture_dir,mongodb_port));
 }
 
 /*
  * The private constructor
  */
-iqcapture_sink_impl::iqcapture_sink_impl(size_t itemsize, size_t chunksize, char* capture_dir)
+iqcapture_sink_impl::iqcapture_sink_impl(size_t itemsize, size_t chunksize, char* capture_dir, int mongodb_port)
     : gr::sync_block("iqcapture_sink",
                      gr::io_signature::make(1, 1, itemsize),
                      gr::io_signature::make(0, 0, 0))
@@ -56,7 +56,7 @@ iqcapture_sink_impl::iqcapture_sink_impl(size_t itemsize, size_t chunksize, char
     set_msg_handler(pmt::mp("capture"),boost::bind(&iqcapture_sink_impl::capture, this, _1));
     std::string errmsg;
     try {
-        if (!this->d_mongo_client.connect(std::string("127.0.0.1:") + "27017",errmsg)) {
+        if (!this->d_mongo_client.connect(std::string("127.0.0.1:") + std::to_string(mongodb_port),errmsg)) {
             GR_LOG_ERROR(d_debug_logger,"failed to initialize the client driver");
             throw std::runtime_error("cannot connect to Mongo Client");
         }

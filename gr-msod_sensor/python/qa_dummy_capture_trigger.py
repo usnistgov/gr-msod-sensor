@@ -24,6 +24,8 @@ from gnuradio import blocks
 import os
 import msod_sensor_swig as capture
 
+MONGODB_PORT = 33000
+
 class qa_dummy_capture_trigger (gr_unittest.TestCase):
     def setUp (self):
         self.tb = gr.top_block ()
@@ -34,7 +36,7 @@ class qa_dummy_capture_trigger (gr_unittest.TestCase):
 	self.u = blocks.file_source(gr.sizeof_float,"/tmp/testdata.bin",False)
 	self.throttle = blocks.throttle(itemsize=gr.sizeof_float,samples_per_sec=1000)
 	self.tb.connect(self.u,self.throttle)
-        self.sqr = capture.iqcapture_sink(itemsize=gr.sizeof_float, chunksize = 500, capture_dir="/tmp")
+        self.sqr = capture.iqcapture_sink(itemsize=gr.sizeof_float, chunksize = 500, capture_dir="/tmp",mongodb_port=MONGODB_PORT)
 	self.tb.connect(self.throttle,self.sqr)
 	self.trigger = capture.dummy_capture_trigger(itemsize=gr.sizeof_float)
 	self.tb.connect(self.throttle,self.trigger)

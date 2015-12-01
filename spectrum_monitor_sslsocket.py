@@ -41,8 +41,20 @@ import requests
 import numpy
 import struct
 import os
-sys.path.insert(0,os.environ['SPECTRUM_BROWSER_HOME']+'/services/common')
-from timezone import getLocalUtcTimeStamp, formatTimeStampLong
+
+def getLocalUtcTimeStamp():
+    t = time.mktime(time.gmtime())
+    isDst = time.localtime().tm_isdst
+    return t - isDst * 60 * 60
+
+
+def formatTimeStampLong(timeStamp, timeZoneName):
+    """
+    long format timestamp.
+    """
+    localTimeStamp, tzName = getLocalTime(timeStamp, timeZoneName)
+    dt = datetime.datetime.fromtimestamp(float(localTimeStamp))
+    return str(dt) + " " + tzName
 
 class Struct(dict):
     def __init__(self, **kwargs):
@@ -301,7 +313,6 @@ def main_loop(tb):
     #print 'socket port =', response['port']
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     print 'created socket'
-    #s  = ssl.wrap_socket(sock)
     tb.s = s = ssl.wrap_socket(sock)
     host=tb.dest_host
     print 'created ssl socket'
@@ -314,18 +325,14 @@ def main_loop(tb):
     sys_msg = tb.read_json_from_file('sensor.sys')
     print 'read in files'
     ts = long(round(getLocalUtcTimeStamp()))
-    print 'ts is', ts
     print 'Serial no.', sensor_id
     loc_msg['t'] = ts
     loc_msg['SensorID'] = sensor_id 
     sys_msg['t'] = ts
     sys_msg['SensorID'] = sensor_id
     print 'sending data to server' 
+    tb.send_obj(sys_msg)
     tb.send_obj(loc_msg)
-    #s.send_obj(loc_msg)
-    print 'sent loc_msg'
-    #tb.send_obj(sys_msg)
-    print 'sent sys_msg'
     # Form data header
     ts = long(round(getLocalUtcTimeStamp()))
     f_start = int(tb.center_freq - tb.bandwidth / 2.0 -0.5)
@@ -334,7 +341,9 @@ def main_loop(tb):
     mpar = Struct(fStart=f_start, fStop=f_stop, n=tb.num_ch, td=-1, tm=tb.meas_duration, Det='Average' if tb.det_type=='avg' else 'Peak', Atten=tb.atten)
     print 'mpar done'
     # Need to add a field for overflow indicator
+
     data = Struct(Ver='1.0.12', Type='Data', SensorID=sensor_id, SensorKey='NaN', t=ts, Sys2Detect='LTE', Sensitivity='Low', mType='FFT-Power', t1=ts, a=1, nM=-1, Ta=-1, OL='NaN', wnI=-77.0, Comment='Using hard-coded (not detected) system noise power for wnI', Processed='False', DataType = 'Binary - int8', ByteOrder='N/A', Compression='None', mPar=mpar)
+
     print 'made data struct'
     
     tb.send_obj(data)

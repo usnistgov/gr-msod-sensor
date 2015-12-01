@@ -46,7 +46,7 @@ namespace gr {
        * class. capture::capture_sink::make is the public interface for
        * creating new instances.
        */
-      static sptr make(size_t itemsize, size_t chunksize, char* capture_dir);
+      static sptr make(size_t itemsize, size_t chunksize, char* capture_dir, int mongodb_port);
 
       /*!
        * \brief Start capture

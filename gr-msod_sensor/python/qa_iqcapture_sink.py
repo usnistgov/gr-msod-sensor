@@ -60,7 +60,7 @@ class qa_iqcapture_sink (gr_unittest.TestCase):
 	self.u = blocks.file_source(gr.sizeof_float,"/tmp/testdata.bin",False)
 	self.throttle = blocks.throttle(itemsize=gr.sizeof_float,samples_per_sec=1000)
 	self.tb.connect(self.u,self.throttle)
-        self.sqr = capture.iqcapture_sink(itemsize=gr.sizeof_float, chunksize = 500, capture_dir="/tmp")
+        self.sqr = capture.iqcapture_sink(itemsize=gr.sizeof_float, chunksize = 500, capture_dir="/tmp",mongodb_port=33000)
 	self.tb.connect(self.throttle,self.sqr)
 
     def tearDown (self):

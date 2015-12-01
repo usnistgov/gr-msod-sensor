@@ -56,7 +56,7 @@ namespace gr {
       // LTE downlink).
       void capture(pmt::pmt_t msg);
      public:
-      iqcapture_sink_impl(size_t itemsize, size_t chunksize, char* capture_dir);
+      iqcapture_sink_impl(size_t itemsize, size_t chunksize, char* capture_dir,int mongodb_port);
       ~iqcapture_sink_impl();
       // set the sensor id (for posting to the database).
       void set_data_message(char* data_message);

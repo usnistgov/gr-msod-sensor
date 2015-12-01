@@ -4,7 +4,7 @@
   <key>msod_sensor_iqcapture_sink</key>
   <category>msod_sensor</category>
   <import>import msod_sensor</import>
-  <make>msod_sensor.iqcapture_sink($itemsize, $chunksize, $capture_dir)</make>
+  <make>msod_sensor.iqcapture_sink($itemsize, $chunksize, $capture_dir, $mongodb_port)</make>
   <!-- Make one 'param' node for every Parameter you want settable from the GUI.
        Sub-nodes:
        * name
@@ -28,6 +28,13 @@
     <key>capture_dir</key>
     <type>string</type>
   </param>
+
+  <param>
+    <name>mongodb_port</name>
+    <key>mongodb_port</key>
+    <type>int</type>
+  </param>
+
   <!-- Make one 'sink' node per input. Sub-nodes:
        * name (an identifier for the GUI)
        * type
@@ -37,6 +44,7 @@
     <name>in</name>
     <type>float</type>
   </sink>
+
 
   <!-- Make one 'source' node per output. Sub-nodes:
        * name (an identifier for the GUI)

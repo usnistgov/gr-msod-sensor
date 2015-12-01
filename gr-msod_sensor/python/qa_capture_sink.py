@@ -28,6 +28,10 @@ import time
 import pymongo
 global mongoclient
 
+global MONGODB_PORT 
+
+MONGODB_PORT=33000
+
 class Struct(dict):
     def __init__(self, **kwargs):
 	super(Struct, self).__init__(**kwargs)
@@ -60,7 +64,7 @@ class qa_capture_sink (gr_unittest.TestCase):
 	self.u = blocks.file_source(gr.sizeof_float,"/tmp/testdata.bin",False)
 	self.throttle = blocks.throttle(itemsize=gr.sizeof_float,samples_per_sec=1000)
 	self.tb.connect(self.u,self.throttle)
-        self.sqr = capture.capture_sink(itemsize=gr.sizeof_float, chunksize = 500, capture_dir="/tmp")
+        self.sqr = capture.capture_sink(itemsize=gr.sizeof_float, chunksize = 500, capture_dir="/tmp", mongodb_port=MONGODB_PORT)
 	self.tb.connect(self.throttle,self.sqr)
 
     def tearDown (self):
@@ -101,6 +105,7 @@ class qa_capture_sink (gr_unittest.TestCase):
 
 if __name__ == '__main__':
     global mongoclient
-    mongoclient = pymongo.MongoClient("127.0.0.1")
+    global MONGODB_PORT
+    mongoclient = pymongo.MongoClient("127.0.0.1",MONGODB_PORT)
     mongoclient.iqcapture.dataMessages.drop()
     gr_unittest.run(qa_capture_sink, "qa_capture_sink.xml")

@@ -49,7 +49,7 @@ namespace gr {
       void generate_timestamp();
 
      public:
-      capture_sink_impl(size_t itemsize, size_t chunksize, char* capture_dir);
+      capture_sink_impl(size_t itemsize, size_t chunksize, char* capture_dir, int mongodb_port);
       ~capture_sink_impl();
       // Where all the action really happens
       int work(int noutput_items,
