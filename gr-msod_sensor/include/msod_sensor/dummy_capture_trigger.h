@@ -23,7 +23,7 @@
 #define INCLUDED_MSOD_SENSOR_DUMMY_CAPTURE_TRIGGER_H
 
 #include <msod_sensor/api.h>
-#include <gnuradio/sync_block.h>
+#include <gnuradio/block.h>
 
 namespace gr {
   namespace msod_sensor {
@@ -33,7 +33,7 @@ namespace gr {
      * \ingroup msod_sensor
      *
      */
-    class MSOD_SENSOR_API dummy_capture_trigger : virtual public gr::sync_block
+    class MSOD_SENSOR_API dummy_capture_trigger : virtual public gr::block
     {
      public:
       typedef boost::shared_ptr<dummy_capture_trigger> sptr;

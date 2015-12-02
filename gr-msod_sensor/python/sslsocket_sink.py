@@ -21,21 +21,48 @@
 
 import numpy
 from gnuradio import gr
+from multiprocessing import Process
+import socket
+import ssl
+import json
+import struct
+
+def command_handler(capture_sink, sock):
+	command = sock.recv(1024)
+	print "Got something"
+
 
 class sslsocket_sink(gr.sync_block):
     """
     docstring for block sslsocket_sink
     """
-    def __init__(self, dtype, nitems_per_block, sock):
+    def __init__(self, dtype, nitems_per_block, host,port,sys_msg,loc_msg,data_msg,capture_sink):
         gr.sync_block.__init__(self,
             name="sslsocket_sink",
             in_sig=[(dtype, nitems_per_block)],
             out_sig=None)
+	self.host = host
+	self.port = port
+   	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+  	sock.connect((self.host,self.port))
+        self.sock =  ssl.wrap_socket(sock)
+	p = Process(target=command_handler,args=(capture_sink,sock))
+	p.start()
+	self.send_obj(sys_msg)
+	self.send_obj(loc_msg)
+	self.send_obj(data_msg)
 
-    def set_sock(self, sock):
-	self.sock = sock
+    def send_obj(self, obj):
+	msg = json.dumps(obj)
+	frmt = "=%ds" % len(msg)
+	packed_msg = struct.pack(frmt, msg)
+	ascii_hdr = "%d\r" % len(packed_msg)
+	self.sock.send(ascii_hdr)
+	self.sock.send(packed_msg)
+
 
     def work(self, input_items, output_items):
+
         in0 = input_items[0]
         num_input_items = len(in0)
 	for i in range(num_input_items):

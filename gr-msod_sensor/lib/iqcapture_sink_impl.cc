@@ -80,7 +80,8 @@ iqcapture_sink_impl::~iqcapture_sink_impl()
 }
 
 // Write out whatever is in our capture buffer to a file.
-// This is done on signal from an external entity
+// This is done on signal from an external entity - the capture trigger
+// is sent by the trigger block.
 void
 iqcapture_sink_impl::capture(pmt::pmt_t msg) {
     generate_timestamp();

@@ -67,6 +67,44 @@ class ThreadClass(threading.Thread):
 
 class my_top_block(gr.top_block):
 
+
+    def read_configuration(self):
+    	print 'host:',self.dest_host
+    	sensor_id= self.sensorId
+    	r = requests.post('https://'+self.dest_host+':443/sensordata/getStreamingPort/'+sensor_id, verify=False)
+    	print 'Requestion port on:'+ 'https://'+self.dest_host+':443/sensordata/getStreamingPort/'+sensor_id 
+    	print 'server response:', r.text
+    	json = r.json()
+    	port = json["port"]
+    	print 'socket port =',port #, response['port']
+    	self.port = port
+    	print 'Requestion port on:'+ 'https://'+self.dest_host+':443/sensordb/getSensorConfig/'+sensor_id
+    	r = requests.post('https://'+self.dest_host+':443/sensordb/getSensorConfig/'+sensor_id, verify=False)
+    	print 'server response:', r.text
+    	json = r.json()
+
+    def initialize_message_headers(self):
+    	self.loc_msg = self.read_json_from_file('sensor.loc')
+    	self.sys_msg = self.read_json_from_file('sensor.sys')
+    	self.data_msg = self.read_json_from_file('sensor.data')
+    	ts = long(round(getLocalUtcTimeStamp()))
+    	self.loc_msg['t'] = ts
+    	self.loc_msg['SensorID'] = self.sensorId
+    	self.sys_msg['t'] = ts
+    	self.sys_msg['SensorID'] = self.sensorId
+    	self.data_msg['t'] = ts
+    	self.data_msg['t1'] = ts
+    	# Fix up the data message in accordance with various input parameters.
+    	f_start = int(self.center_freq - self.bandwidth / 2.0 -0.5)
+    	f_stop = int (f_start + self.bandwidth + 0.5)
+    	det = 'Average' if self.det_type == 'avg' else 'Peak'
+    	self.data_msg['SensorID'] = self.sensorId
+    	self.data_msg['mPar']['fStart'] = f_start
+    	self.data_msg['mPar']['fStop'] = f_stop
+    	self.data_msg['mPar']['Atten'] = self.atten
+    	self.data_msg['mPar']['n'] = self.num_ch
+    	self.data_msg['mPar']['tm'] = self.meas_duration
+
     def __init__(self):
         gr.top_block.__init__(self)
 
@@ -100,6 +138,8 @@ class my_top_block(gr.top_block):
                           help="set destination host for streaming data")
         parser.add_option("", "--skip-DC", action="store_true", default=False,
                           help="skip the DC bin when mapping channels")
+	parser.add_option("-S","--sensorId", type = "string", default = None, help="Sensor ID -- default will use serial number of sensor")
+	parser.add_option("-m","--mongod_port", type = "int", default = 2017, help="Mongodb port")
 
         (options, args) = parser.parse_args()
         if len(args) != 2:
@@ -108,6 +148,16 @@ class my_top_block(gr.top_block):
 
 	self.center_freq = eng_notation.str_to_num(args[0])
 	self.bandwidth = eng_notation.str_to_num(args[1])
+	self.dest_host = options.dest_host
+	self.samp_rate = options.samp_rate
+        self.fft_size = options.fft_size
+        self.num_ch = options.number_channels
+	self.sensorId = options.sensorId
+	self.det_type = options.det_type
+	self.mongodb_port = options.mongod_port
+
+	self.read_configuration()
+
 
         if not options.real_time:
             realtime = False
@@ -151,7 +201,6 @@ class my_top_block(gr.top_block):
 		print "New actual sample rate =", usrp_rate/1e6, "MHz"
 	    resamp = filter.fractional_resampler_cc(0.0, usrp_rate / options.samp_rate)
 
-	self.samp_rate = options.samp_rate
         
 	if(options.lo_offset):
             self.lo_offset = options.lo_offset
@@ -159,8 +208,6 @@ class my_top_block(gr.top_block):
 	    self.lo_offset = usrp_rate / 2.0
 	    print "LO offset set to", self.lo_offset/1e6, "MHz"
 
-        self.fft_size = options.fft_size
-        self.num_ch = options.number_channels
         
         s2v = blocks.stream_to_vector(gr.sizeof_gr_complex, self.fft_size)
 
@@ -174,13 +221,15 @@ class my_top_block(gr.top_block):
         hz_per_bin = self.samp_rate / self.fft_size
 	channel_bw = hz_per_bin * round(self.bandwidth / self.num_ch / hz_per_bin)
 	self.bandwidth = channel_bw * self.num_ch
-	print "Actual width of band is", self.bandwidth/1e6, "MHz."
-	start_freq = int(self.center_freq - self.bandwidth/2.0 -0.5)
-	stop_freq = int (start_freq + self.bandwidth +0.5)
+	self.start_freq = int(self.center_freq - self.bandwidth/2.0 -0.5)
+	self.stop_freq = int (self.start_freq + self.bandwidth +0.5)
+
+
+
 	for j in range(self.fft_size):
 	    fj = self.bin_freq(j, self.center_freq)
-	    if (fj >= start_freq) and (fj < stop_freq):
-	        channel_num = int(math.floor((fj - start_freq) / channel_bw)) + 1
+	    if (fj >= self.start_freq) and (fj < self.stop_freq):
+	        channel_num = int(math.floor((fj - self.start_freq) / channel_bw)) + 1
 	        self.bin2ch_map[j] = channel_num
 	if options.skip_DC:
 	    self.bin2ch_map[(self.fft_size + 1) / 2 + 1:] = self.bin2ch_map[(self.fft_size + 1) / 2 : -1]
@@ -207,20 +256,6 @@ class my_top_block(gr.top_block):
 	W2dBm = blocks.nlog10_ff(10.0, self.num_ch, 30.0 + Vsq2W_dB)
 
 	f2c = blocks.float_to_char(self.num_ch, 1.0)
-
-	self.dest_host = options.dest_host
-
-	# ssl socket is set in main loop; use dummy value for now
-	self.srvr = myblocks.sslsocket_sink(numpy.int8, self.num_ch, 0)
-
-	if usrp_rate > self.samp_rate:
-	    # insert resampler
-	    self.connect(self.u, resamp, s2v)
-	else:
-	    self.connect(self.u, s2v)
-	self.connect(s2v, ffter, c2mag, self.aggr, self.stats, W2dBm, f2c, self.srvr)
-	#self.connect(s2v, ffter, c2mag, self.aggr, self.stats, W2dBm, self.srvr)
-
         g = self.u.get_gain_range()
         if options.gain is None:
             # if no gain was specified, use the mid-point in dB
@@ -229,6 +264,19 @@ class my_top_block(gr.top_block):
         self.set_gain(options.gain)
         print "gain =", options.gain, "dB in range (%0.1f dB, %0.1f dB)" % (float(g.start()), float(g.stop()))
 	self.atten = float(g.stop()) - options.gain
+
+        capture_sink = myblocks.capture_sink(itemsize=gr.sizeof_float, chunksize = 500, capture_dir="/tmp", mongodb_port=self.mongodb_port)
+	self.initialize_message_headers()
+	self.srvr = myblocks.sslsocket_sink(numpy.int8, self.num_ch,self.dest_host,self.port,self.sys_msg,self.loc_msg,self.data_msg,capture_sink)
+
+	if usrp_rate > self.samp_rate:
+	    self.connect(self.u, resamp, s2v)
+	else:
+	    self.connect(self.u, s2v)
+
+	# Connect the blocks together.
+	self.connect(s2v, ffter, c2mag, self.aggr, self.stats, W2dBm, f2c, self.srvr)
+
 
     def set_freq(self, target_freq):
         """
@@ -254,21 +302,11 @@ class my_top_block(gr.top_block):
         freq = center_freq + hz_per_bin * (i_bin - self.fft_size / 2 - self.fft_size % 2)
         return freq
     
-    def set_sock(self, s):
-        self.srvr.set_sock(s)
-
     def send(self, bytes):
 	#toSend = binascii.b2a_base64(bytes)
 	#self.s.send(toSend)
 	self.s.send(bytes)
 
-    def send_obj(self, obj):
-	msg = json.dumps(obj)
-	frmt = "=%ds" % len(msg)
-	packed_msg = struct.pack(frmt, msg)
-	ascii_hdr = "%d\r" % len(packed_msg)
-	self.send(ascii_hdr)
-	self.send(packed_msg)
 
     def set_bin2ch_map(self, bin2ch_map):
         self.aggr.set_bin_index(bin2ch_map)
@@ -287,76 +325,6 @@ def main_loop(tb):
     print "Set frequency to", tb.center_freq/1e6, "MHz"
     time.sleep(0.25)
   
-    print 'host:',tb.dest_host
-    # Establish ssl socket connection to server
-    #sensor_id = tb.u.get_usrp_info()['rx_serial']
-    #sensor_id="E2R20PEUP"
-    sensor_id='E6R16W5XS'
-    #port=8443
-    print 'Sensor ID:',sensor_id
-    r = requests.post('https://'+tb.dest_host+':443/sensordata/getStreamingPort/'+sensor_id, verify=False)
-    print 'Requestion port on:'+ 'https://'+tb.dest_host+':443/sensordata/getStreamingPort/'+sensor_id 
-
-    print 'server response:', r.text
-    json = r.json()
-    print 'made json' 
-    port = json["port"]
-    print 'socket port =',port #, response['port']
-
-
-    print 'Requestion port on:'+ 'https://'+tb.dest_host+':443/sensordb/getSensorConfig/'+sensor_id
-    r = requests.post('https://'+tb.dest_host+':443/sensordb/getSensorConfig/'+sensor_id, verify=False)
-    print 'server response:', r.text
-    json = r.json()
-    print 'made json' 
-    #port = json["port"]
-    #print 'socket port =', response['port']
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    print 'created socket'
-    tb.s = s = ssl.wrap_socket(sock)
-    host=tb.dest_host
-    print 'created ssl socket'
-    s.connect((host,port))
-    print 'connected socket'
-    tb.set_sock(s)
-    print 'sock is set'
-    # Send location and system info to server
-    loc_msg = tb.read_json_from_file('sensor.loc')
-    sys_msg = tb.read_json_from_file('sensor.sys')
-    data_msg = tb.read_json_from_file('sensor.data')
-    ts = long(round(getLocalUtcTimeStamp()))
-    print 'ts is', ts
-    print 'Serial no.', sensor_id
-    loc_msg['t'] = ts
-    loc_msg['SensorID'] = sensor_id 
-    sys_msg['t'] = ts
-    sys_msg['SensorID'] = sensor_id
-    data_msg['t'] = ts
-    data_msg['t1'] = ts
-    # Fix up the data message in accordance with various input parameters.
-    f_start = int(tb.center_freq - tb.bandwidth / 2.0 -0.5)
-    f_stop = int (f_start + tb.bandwidth + 0.5)
-    det = 'Average' if tb.det_type == 'avg' else 'Peak'
-    data_msg['SensorID'] = sensor_id
-    data_msg['mPar']['fStart'] = f_start
-    data_msg['mPar']['fStop'] = f_stop
-    data_msg['mPar']['Atten'] = tb.atten
-    data_msg['mPar']['n'] = tb.num_ch
-    data_msg['mPar']['tm'] = tb.meas_duration
-    print data_msg
-    
-    tb.send_obj(loc_msg)
-    print 'sent loc_msg'
-    tb.send_obj(sys_msg)
-    print 'sent sys_msg'
-    # Form data header
-    #mpar = Struct(fStart=f_start, fStop=f_stop, n=tb.num_ch, td=-1, tm=tb.meas_duration, Det='Average' if tb.det_type=='avg' else 'Peak', Atten=tb.atten)
-    # Need to add a field for overflow indicator
-    #data = Struct(Ver='1.0.12', Type='Data', SensorID=sensor_id, SensorKey='NaN', t=ts, Sys2Detect='LTE', Sensitivity='Low', mType='FFT-Power', t1=ts, a=1, nM=-1, Ta=-1, OL='NaN', wnI=-77.0, Comment='Using hard-coded (not detected) system noise power for wnI', Processed='False', DataType = 'Binary - int8', ByteOrder='N/A', Compression='None', mPar=mpar)
-    tb.send_obj(data_msg)
-    print 'sent data_msg' 
-    #date_str = formatTimeStampLong(ts, loc_msg['TimeZone'])
-    print "fc =", tb.center_freq/1e6, "MHz. Sending data to", tb.dest_host
 
     # Start flow graph
     tb.start()

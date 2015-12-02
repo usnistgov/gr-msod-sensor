@@ -35,11 +35,14 @@ namespace gr {
      public:
       dummy_capture_trigger_impl(size_t itemsize);
       ~dummy_capture_trigger_impl();
+       // Where all the action really happens
+      void forecast (int noutput_items, gr_vector_int &ninput_items_required);
 
-      // Where all the action really happens
-      int work(int noutput_items,
-         gr_vector_const_void_star &input_items,
-         gr_vector_void_star &output_items);
+      int general_work(int noutput_items,
+           gr_vector_int &ninput_items,
+           gr_vector_const_void_star &input_items,
+           gr_vector_void_star &output_items);
+
     };
 
   } // namespace msod_sensor
