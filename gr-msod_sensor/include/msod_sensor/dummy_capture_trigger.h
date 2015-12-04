@@ -47,6 +47,16 @@ namespace gr {
        * creating new instances.
        */
       static sptr make(size_t itemsize);
+
+      /*!
+       * \brief Start capture
+       */
+      virtual void arm() = 0;
+
+      /*!
+       * \brief Stop capture.
+       */
+      virtual void disarm() = 0;
     };
 
   } // namespace msod_sensor

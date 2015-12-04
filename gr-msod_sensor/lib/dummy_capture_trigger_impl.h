@@ -31,6 +31,7 @@ namespace gr {
      private:
 	int d_itemcount;
 	int d_itemsize;
+	bool d_armed;
 	
      public:
       dummy_capture_trigger_impl(size_t itemsize);
@@ -42,6 +43,10 @@ namespace gr {
            gr_vector_int &ninput_items,
            gr_vector_const_void_star &input_items,
            gr_vector_void_star &output_items);
+
+      void arm();
+
+      void disarm();
 
     };
 

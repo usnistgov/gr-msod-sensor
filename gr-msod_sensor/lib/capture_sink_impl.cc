@@ -22,7 +22,7 @@
 #include "config.h"
 #endif
 
-#define IQCAPTURE_DEBUG
+//#define IQCAPTURE_DEBUG
 
 #include <gnuradio/io_signature.h>
 #include <gnuradio/prefs.h>
@@ -30,9 +30,7 @@
 #include <ctime>
 #include <fstream>
 #include <iostream>
-#ifdef IQCAPTURE_DEBUG
 #include <gnuradio/logger.h>
-#endif
 #include <mongo/client/dbclient.h>
 #include <exception>
 #include <mongo/bson/bson.h>
@@ -59,15 +57,17 @@ capture_sink_impl::capture_sink_impl(size_t itemsize, size_t chunksize, char* ca
                      gr::io_signature::make(1, 1, itemsize),
                      gr::io_signature::make(0, 0, 0))
 {
-    this->d_itemsize = itemsize;
-    this->d_capture_dir = capture_dir;
-    this->d_chunksize = chunksize;
-    this->d_itemcount = 0;
-    this->d_current_capture_file = NULL;
-    this->generate_timestamp();
+
+    d_itemsize = itemsize;
+    d_capture_dir = capture_dir;
+    d_chunksize = chunksize;
+    d_itemcount = 0;
+    d_current_capture_file = NULL;
+    generate_timestamp();
+    d_start_capture = false;
     std::string errmsg;
     try {
-        if (!this->d_mongo_client.connect(std::string("127.0.0.1:") + std::to_string(mongodb_port) ,errmsg)) {
+        if (!d_mongo_client.connect(std::string("127.0.0.1:") + std::to_string(mongodb_port) ,errmsg)) {
             GR_LOG_ERROR(d_debug_logger,"failed to initialize the client driver");
             throw std::runtime_error("cannot connect to Mongo Client");
         }
@@ -75,11 +75,15 @@ capture_sink_impl::capture_sink_impl(size_t itemsize, size_t chunksize, char* ca
         GR_LOG_ERROR(d_debug_logger,"Unexpected exception");
         throw e;
     }
-#ifdef IQCAPTURE_DEBUG
     prefs *p = prefs::singleton();
+#ifdef IQCAPTURE_DEBUG
     std::string log_level = p->get_string("LOG", "log_level", "debug");
-    GR_LOG_SET_LEVEL(d_debug_logger,log_level);
+#else
+    std::string log_level = p->get_string("LOG", "log_level", "info");
 #endif
+    GR_LOG_SET_LEVEL(d_debug_logger,log_level);
+
+
 }
 
 /*
@@ -87,6 +91,12 @@ capture_sink_impl::capture_sink_impl(size_t itemsize, size_t chunksize, char* ca
  */
 capture_sink_impl::~capture_sink_impl()
 {
+	for(std::vector<char*>::iterator it=d_capture_buffer.begin() ; it < d_capture_buffer.end(); it++ ) {
+		char* element = *it;
+		delete element;
+	}	
+	// Clear the capture vector.
+	d_capture_buffer.clear();
 }
 
 /*
@@ -95,7 +105,7 @@ capture_sink_impl::~capture_sink_impl()
 void capture_sink_impl::generate_timestamp() {
     time_t  timev;
     time(&timev);
-    std::string* dirname = new std::string(this->d_capture_dir);
+    std::string* dirname = new std::string(d_capture_dir);
     dirname->append("/capture-");
     std::string time_stamp = std::to_string(timev);
     dirname->append(time_stamp);
@@ -114,32 +124,69 @@ void capture_sink_impl::generate_timestamp() {
             }
         }
     }
-    if ( this->d_current_capture_file != NULL) {
-	delete this->d_current_capture_file;
+    if ( d_current_capture_file != NULL) {
+	delete d_current_capture_file;
     }
-    this->d_current_capture_file =  dirname;
+    d_current_capture_file =  dirname;
 }
 
 void
 capture_sink_impl::start_capture() {
-    this->d_start_capture = true;
+    d_start_capture = true;
 }
 
 void
 capture_sink_impl::stop_capture() {
-    this->d_start_capture = false;
+    d_start_capture = false;
 }
 
 
 void
 capture_sink_impl::set_data_message(char* data_message) {
     try {
-        this->d_data_message = mongo::fromjson(std::string(data_message));
+        d_data_message = mongo::fromjson(std::string(data_message));
     } catch ( mongo::DBException& e) {
         GR_LOG_ERROR(d_debug_logger,"failed to initialize the client driver");
         throw std::runtime_error("Invalid data message");
 
     }
+}
+
+
+/**
+* Dump the existing buffer into a file and push a record into mongodb.
+*/
+
+bool
+capture_sink_impl::dump_buffer() {
+    int buffercounter = 0;
+    d_start_capture = false;
+    generate_timestamp();
+    int fd = open(d_current_capture_file->c_str(), O_APPEND | O_RDWR | O_CREAT, S_IWUSR | S_IRUSR);
+    for (std::vector<char*>::iterator p = d_capture_buffer.begin(); p < d_capture_buffer.end(); p++) {
+	char* item = *p;
+        int written = write(fd,item,d_itemsize);
+    }
+    close(fd);
+    time_t  timev;
+    time(&timev);
+    mongo::BSONObjBuilder builder;
+    builder.appendElements(d_data_message);
+    mongo::BSONObj data_message = builder.append("_capture_file",*d_current_capture_file)
+                                          .append("_capture_time",std::to_string(timev))
+                                          .append("_sample_count",std::to_string(d_itemcount))
+                                          .obj();
+    // Insert the message into mongodb.
+    try {
+        d_mongo_client.insert("iqcapture.dataMessages",data_message);
+    } catch (mongo::DBException& e) {
+        GR_LOG_ERROR(d_debug_logger,"capture_sink_impl::Error inserting into mongodb ");
+        return false;
+    }
+#ifdef IQCAPTURE_DEBUG
+    GR_LOG_DEBUG(d_debug_logger,"capture_sink_impl::data_message " + data_message.toString());
+#endif
+    return true;
 }
 
 
@@ -149,53 +196,41 @@ capture_sink_impl::work(int noutput_items,
                         gr_vector_const_void_star &input_items,
                         gr_vector_void_star &output_items)
 {
-    // Capture is not enabled.
-    if (!this->d_start_capture) return noutput_items;
+
+    // Buffer whatever you get
+
+    // Capture is not enabled. Just pass through.
+    if (!d_start_capture) return noutput_items;
     // Capture is enabled.
     const char *in = (const char *) input_items[0];
     char *out = (char *) output_items[0];
-    unsigned int byte_size = noutput_items * this->d_itemsize;
+    unsigned int byte_size = noutput_items * d_itemsize;
 #ifdef IQCAPTURE_DEBUG
     GR_LOG_DEBUG(d_debug_logger,"capture_sink_impl::work byte_size " + std::to_string(byte_size));
     GR_LOG_DEBUG(d_debug_logger,"capture_sink_impl::work noutput_items " + std::to_string(noutput_items));
 #endif
-    int fd = open(this->d_current_capture_file->c_str(), O_APPEND | O_RDWR | O_CREAT, S_IWUSR | S_IRUSR);
     int buffercounter = 0;
-    for (int i = 0 ; i < noutput_items; i++) {
-        if ( this->d_itemcount >= this->d_chunksize) {
-            close(fd);
-            time_t  timev;
-            time(&timev);
-            mongo::BSONObjBuilder builder;
-            builder.appendElements(this->d_data_message);
-            mongo::BSONObj data_message = builder
-                                          .append("_capture_file",*this->d_current_capture_file)
-                                          .append("_capture_time",std::to_string(timev))
-                                          .append("_sample_count",std::to_string(this->d_itemcount))
-                                          .obj();
-            // Insert the message into mongodb.
-            try {
-                this->d_mongo_client.insert("iqcapture.dataMessages",data_message);
-            } catch (mongo::DBException& e) {
-                GR_LOG_ERROR(d_debug_logger,"capture_sink_impl::Error inserting into mongodb ");
-                return -1;
-            }
-#ifdef IQCAPTURE_DEBUG
-            GR_LOG_DEBUG(d_debug_logger,"capture_sink_impl::data_message " + data_message.toString());
-#endif
-            generate_timestamp();
-            fd = open(this->d_current_capture_file->c_str(), O_APPEND | O_RDWR | O_CREAT, S_IWUSR | S_IRUSR);
-            this->d_itemcount = 0;
-        }
-        int written = write(fd,in + buffercounter,d_itemsize);
-        if ( written != d_itemsize ) {
-            perror("capture_sink");
-            return -1;    // indicate we're done
-        }
-        this->d_itemcount ++;
-        buffercounter += d_itemsize;
+    for (int i = 0; i < noutput_items; i++ ) {
+	const char* item =  (in + buffercounter);
+	buffercounter++;
+	char* newitem  = new char[d_itemsize];
+	// careate a copy of the inbound item.
+	memcpy(newitem,item,d_itemsize);
+	// put the new item into our in memory vector.
+	d_capture_buffer.push_back(newitem);
+	// Exceeded our storage capacity? So erase the beginning element.
+	if (d_capture_buffer.size() ==  d_chunksize) {
+	    if (!d_start_capture) {
+	    	char* item = d_capture_buffer.front();
+		// delete the first item.
+	    	d_capture_buffer.erase(d_capture_buffer.begin());
+	    	delete item;
+	    } else {
+		// Capture is enabled so dump the buffer.
+		if (!dump_buffer()) return -1;
+	    }
+	}
     }
-    close(fd);
     return noutput_items;
 }
 

@@ -27,7 +27,7 @@ import ssl
 import json
 import struct
 
-def command_handler(capture_sink, sock):
+def command_handler(capture_sink, trigger,sock):
 	command = sock.recv(1024)
 	print "Got something"
 
@@ -36,7 +36,7 @@ class sslsocket_sink(gr.sync_block):
     """
     docstring for block sslsocket_sink
     """
-    def __init__(self, dtype, nitems_per_block, host,port,sys_msg,loc_msg,data_msg,capture_sink):
+    def __init__(self, dtype, nitems_per_block, host,port,sys_msg,loc_msg,data_msg,capture_sink,trigger):
         gr.sync_block.__init__(self,
             name="sslsocket_sink",
             in_sig=[(dtype, nitems_per_block)],
@@ -46,7 +46,7 @@ class sslsocket_sink(gr.sync_block):
    	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
   	sock.connect((self.host,self.port))
         self.sock =  ssl.wrap_socket(sock)
-	p = Process(target=command_handler,args=(capture_sink,sock))
+	p = Process(target=command_handler,args=(capture_sink,trigger,sock))
 	p.start()
 	self.send_obj(sys_msg)
 	self.send_obj(loc_msg)

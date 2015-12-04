@@ -27,7 +27,7 @@
 #include <gnuradio/prefs.h>
 #include "dummy_capture_trigger_impl.h"
 
-#define IQCAPTURE_DEBUG
+//#define IQCAPTURE_DEBUG
 namespace gr {
 namespace msod_sensor {
 
@@ -43,15 +43,20 @@ dummy_capture_trigger::make(size_t itemsize)
  */
 dummy_capture_trigger_impl::dummy_capture_trigger_impl(size_t itemsize)
     : gr::block("dummy_capture_trigger",
-                     gr::io_signature::make(1, 1, sizeof(float)),
-                     gr::io_signature::make(1, 1, sizeof(float)))
+                     gr::io_signature::make(1, 1, itemsize),
+                     gr::io_signature::make(1, 1, itemsize))
 {
     this->d_itemcount = 0;
     this->d_itemsize = itemsize;
+    this->d_armed = false;
     message_port_register_out(pmt::mp("trigger"));
 #ifdef IQCAPTURE_DEBUG
     prefs *p = prefs::singleton();
     std::string log_level = p->get_string("LOG", "log_level", "debug");
+    GR_LOG_SET_LEVEL(d_debug_logger,log_level);
+#else
+    prefs *p = prefs::singleton();
+    std::string log_level = p->get_string("LOG", "log_level", "info");
     GR_LOG_SET_LEVEL(d_debug_logger,log_level);
 #endif
 }
@@ -69,6 +74,16 @@ dummy_capture_trigger_impl::forecast (int noutput_items, gr_vector_int &ninput_i
          ninput_items_required[0] = noutput_items;
 }
 
+void
+dummy_capture_trigger_impl::arm() {
+	this->d_armed = true;
+}
+
+void
+dummy_capture_trigger_impl::disarm() {
+	this->d_armed = false;
+}
+
 
 int
 dummy_capture_trigger_impl::general_work (int noutput_items,
@@ -84,7 +99,7 @@ dummy_capture_trigger_impl::general_work (int noutput_items,
     this->d_itemcount = this->d_itemcount + noutput_items;
     GR_LOG_DEBUG(d_debug_logger,"dummy_capture_trigger::work " + std::to_string(noutput_items) );
     // Just signal the capture block after 1000 items.
-    if (this->d_itemcount > 500) {
+    if (this->d_itemcount > 500 && this->d_armed) {
         GR_LOG_DEBUG(d_debug_logger,"dummy_capture_trigger::work pub" );
         message_port_pub(pmt::mp("trigger"),pmt::intern(std::string("start")));
     }

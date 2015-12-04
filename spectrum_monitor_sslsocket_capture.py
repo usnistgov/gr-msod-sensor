@@ -265,9 +265,11 @@ class my_top_block(gr.top_block):
         print "gain =", options.gain, "dB in range (%0.1f dB, %0.1f dB)" % (float(g.start()), float(g.stop()))
 	self.atten = float(g.stop()) - options.gain
 
-        capture_sink = myblocks.capture_sink(itemsize=gr.sizeof_float, chunksize = 500, capture_dir="/tmp", mongodb_port=self.mongodb_port)
+        capture_sink = myblocks.capture_sink(itemsize=gr.sizeof_gr_complex, chunksize = 500, capture_dir="/tmp", mongodb_port=self.mongodb_port)
 	self.initialize_message_headers()
-	self.srvr = myblocks.sslsocket_sink(numpy.int8, self.num_ch,self.dest_host,self.port,self.sys_msg,self.loc_msg,self.data_msg,capture_sink)
+	trigger = myblocks.dummy_capture_trigger(itemsize=gr.sizeof_gr_complex)
+	self.srvr = myblocks.sslsocket_sink(numpy.int8, self.num_ch,self.dest_host,self.port,self.sys_msg,self.loc_msg,self.data_msg,capture_sink,trigger)
+	
 
 	if usrp_rate > self.samp_rate:
 	    self.connect(self.u, resamp, s2v)
@@ -276,6 +278,7 @@ class my_top_block(gr.top_block):
 
 	# Connect the blocks together.
 	self.connect(s2v, ffter, c2mag, self.aggr, self.stats, W2dBm, f2c, self.srvr)
+	self.connect(self.u,trigger,capture_sink)
 
 
     def set_freq(self, target_freq):

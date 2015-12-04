@@ -25,6 +25,9 @@
 #include <mongo/bson/bson.h>
 #include <msod_sensor/capture_sink.h>
 #include <fstream>
+#include <vector>
+#include <boost/circular_buffer.hpp>
+
 
 namespace gr {
   namespace msod_sensor {
@@ -40,13 +43,15 @@ namespace gr {
       long   d_itemcount;
       bool   d_start_capture;
       long   d_capture_freq;
+      std::vector<char*> d_capture_buffer;
       mongo::BSONObj d_data_message;
       std::ofstream d_logfile;
       std::string* d_current_capture_file;
       mongo::DBClientConnection d_mongo_client;
-      
-
+	
       void generate_timestamp();
+      // dump buffer
+      bool dump_buffer();
 
      public:
       capture_sink_impl(size_t itemsize, size_t chunksize, char* capture_dir, int mongodb_port);
@@ -60,7 +65,7 @@ namespace gr {
 
       // stop capture
       void stop_capture();
-
+	
       // set the sensor id (for posting to the database).
       void set_data_message(char* data_message);
 
