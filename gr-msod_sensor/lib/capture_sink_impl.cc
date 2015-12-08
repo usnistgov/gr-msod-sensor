@@ -22,18 +22,20 @@
 #include "config.h"
 #endif
 
-//#define IQCAPTURE_DEBUG
+#define IQCAPTURE_DEBUG
 
 #include <gnuradio/io_signature.h>
 #include <gnuradio/prefs.h>
-#include "capture_sink_impl.h"
+#include <gnuradio/logger.h>
+#include <mongo/bson/bson.h>
+#include <mongo/client/dbclient.h>
 #include <ctime>
 #include <fstream>
 #include <iostream>
-#include <gnuradio/logger.h>
-#include <mongo/client/dbclient.h>
 #include <exception>
-#include <mongo/bson/bson.h>
+#undef NDEBUG
+#include <cassert>
+#include "capture_sink_impl.h"
 
 
 
@@ -53,16 +55,28 @@ capture_sink::make(size_t itemsize, size_t chunksize, char* capture_dir, int mon
  * The private constructor
  */
 capture_sink_impl::capture_sink_impl(size_t itemsize, size_t chunksize, char* capture_dir, int mongodb_port)
-    : gr::sync_block("capture_sink",
+    :gr::sync_block("capture_sink",
                      gr::io_signature::make(1, 1, itemsize),
                      gr::io_signature::make(0, 0, 0))
 {
+    prefs *p = prefs::singleton();
+#ifdef IQCAPTURE_DEBUG
+    std::string log_level = p->get_string("LOG", "log_level", "debug");
+#else
+    std::string log_level = p->get_string("LOG", "log_level", "info");
+#endif
+    GR_LOG_SET_LEVEL(d_debug_logger,log_level);
+    GR_LOG_DEBUG(d_debug_logger,"capture_sink_impl:: itemsize = " + std::to_string(itemsize) + " chunksize = " + std::to_string(chunksize) + 
+	" capture_dir = "  + capture_dir  );
 
     d_itemsize = itemsize;
-    d_capture_dir = capture_dir;
+    d_capture_dir = new char[strlen(capture_dir) + 1];
+    strcpy(d_capture_dir,capture_dir);
     d_chunksize = chunksize;
     d_itemcount = 0;
     d_current_capture_file = NULL;
+    d_capture_buffer = new char*[chunksize];
+    memset(d_capture_buffer,0,sizeof(d_capture_buffer));
     generate_timestamp();
     d_start_capture = false;
     std::string errmsg;
@@ -71,18 +85,11 @@ capture_sink_impl::capture_sink_impl(size_t itemsize, size_t chunksize, char* ca
             GR_LOG_ERROR(d_debug_logger,"failed to initialize the client driver");
             throw std::runtime_error("cannot connect to Mongo Client");
         }
+    	GR_LOG_DEBUG(d_debug_logger,"capture_sink_impl:: connected to mongod ");
     } catch (std::exception& e) {
         GR_LOG_ERROR(d_debug_logger,"Unexpected exception");
         throw e;
     }
-    prefs *p = prefs::singleton();
-#ifdef IQCAPTURE_DEBUG
-    std::string log_level = p->get_string("LOG", "log_level", "debug");
-#else
-    std::string log_level = p->get_string("LOG", "log_level", "info");
-#endif
-    GR_LOG_SET_LEVEL(d_debug_logger,log_level);
-
 
 }
 
@@ -91,18 +98,14 @@ capture_sink_impl::capture_sink_impl(size_t itemsize, size_t chunksize, char* ca
  */
 capture_sink_impl::~capture_sink_impl()
 {
-	for(std::vector<char*>::iterator it=d_capture_buffer.begin() ; it < d_capture_buffer.end(); it++ ) {
-		char* element = *it;
-		delete element;
-	}	
-	// Clear the capture vector.
-	d_capture_buffer.clear();
+	
 }
 
 /*
 * Generate a file name (timestamped).
 */
 void capture_sink_impl::generate_timestamp() {
+    GR_LOG_DEBUG(d_debug_logger,"capture_sink_impl::generate_timestamp ");
     time_t  timev;
     time(&timev);
     std::string* dirname = new std::string(d_capture_dir);
@@ -132,11 +135,17 @@ void capture_sink_impl::generate_timestamp() {
 
 void
 capture_sink_impl::start_capture() {
+#ifdef IQCAPTURE_DEBUG
+    GR_LOG_DEBUG(d_debug_logger,"capture_sink_impl::start_capture ");
+#endif
     d_start_capture = true;
 }
 
 void
 capture_sink_impl::stop_capture() {
+#ifdef IQCAPTURE_DEBUG
+    GR_LOG_DEBUG(d_debug_logger,"capture_sink_impl::stop_capture ");
+#endif
     d_start_capture = false;
 }
 
@@ -148,7 +157,6 @@ capture_sink_impl::set_data_message(char* data_message) {
     } catch ( mongo::DBException& e) {
         GR_LOG_ERROR(d_debug_logger,"failed to initialize the client driver");
         throw std::runtime_error("Invalid data message");
-
     }
 }
 
@@ -162,12 +170,28 @@ capture_sink_impl::dump_buffer() {
     int buffercounter = 0;
     d_start_capture = false;
     generate_timestamp();
-    int fd = open(d_current_capture_file->c_str(), O_APPEND | O_RDWR | O_CREAT, S_IWUSR | S_IRUSR);
-    for (std::vector<char*>::iterator p = d_capture_buffer.begin(); p < d_capture_buffer.end(); p++) {
-	char* item = *p;
+    GR_LOG_ERROR(d_debug_logger,"capture_sink_impl::dump_buffer: logging to  : " + *d_current_capture_file );
+    assert(d_itemcount == d_chunksize);
+    int fd = open(d_current_capture_file->c_str(), O_RDWR | O_CREAT, S_IWUSR | S_IRUSR);
+    if (fd < 0 ) {
+    	GR_LOG_ERROR(d_debug_logger,"capture_sink_impl::dump_buffer: open failed on : " + *d_current_capture_file->c_str());
+	return false;
+    }
+    int count = 0;
+    for (int i = 0; i < d_itemcount; i++) {
+	char* item = d_capture_buffer[i];
+        GR_LOG_ERROR(d_debug_logger,"capture_sink_impl::dump_buffer: logging to  : " + std::to_string(i) + "\n");
+	assert(item != NULL);
         int written = write(fd,item,d_itemsize);
+	if (written != d_itemsize) {
+    		GR_LOG_ERROR(d_debug_logger,"capture_sink_impl::dump_buffer: write failed. written =  " + std::to_string(written) 
+				+ " d_itemsize " + std::to_string(d_itemsize) + " item " );
+		return false;
+	}
+	count ++;
     }
     close(fd);
+    GR_LOG_DEBUG(d_debug_logger,"capture_sink_impl::dump_buffer: wrote " + std::to_string(count) + " elements to file : " + *d_current_capture_file);
     time_t  timev;
     time(&timev);
     mongo::BSONObjBuilder builder;
@@ -186,7 +210,18 @@ capture_sink_impl::dump_buffer() {
 #ifdef IQCAPTURE_DEBUG
     GR_LOG_DEBUG(d_debug_logger,"capture_sink_impl::data_message " + data_message.toString());
 #endif
+    clear_buffer();
     return true;
+}
+
+
+void
+capture_sink_impl::clear_buffer() {
+    // Clear the capture vector. This also deletes the elements of the capture buffer.
+    for (int i = 0; i < d_itemcount; i++) {
+	delete d_capture_buffer[i];
+    }
+    d_itemcount = 0;
 }
 
 
@@ -197,13 +232,11 @@ capture_sink_impl::work(int noutput_items,
                         gr_vector_void_star &output_items)
 {
 
-    // Buffer whatever you get
-
-    // Capture is not enabled. Just pass through.
-    if (!d_start_capture) return noutput_items;
     // Capture is enabled.
     const char *in = (const char *) input_items[0];
     char *out = (char *) output_items[0];
+    // Capture is not enabled. Just pass through.
+    if (!d_start_capture) return noutput_items;
     unsigned int byte_size = noutput_items * d_itemsize;
 #ifdef IQCAPTURE_DEBUG
     GR_LOG_DEBUG(d_debug_logger,"capture_sink_impl::work byte_size " + std::to_string(byte_size));
@@ -211,25 +244,22 @@ capture_sink_impl::work(int noutput_items,
 #endif
     int buffercounter = 0;
     for (int i = 0; i < noutput_items; i++ ) {
-	const char* item =  (in + buffercounter);
-	buffercounter++;
-	char* newitem  = new char[d_itemsize];
-	// careate a copy of the inbound item.
-	memcpy(newitem,item,d_itemsize);
-	// put the new item into our in memory vector.
-	d_capture_buffer.push_back(newitem);
-	// Exceeded our storage capacity? So erase the beginning element.
-	if (d_capture_buffer.size() ==  d_chunksize) {
-	    if (!d_start_capture) {
-	    	char* item = d_capture_buffer.front();
-		// delete the first item.
-	    	d_capture_buffer.erase(d_capture_buffer.begin());
-	    	delete item;
+	char* item =  (char*) (in + buffercounter);
+	buffercounter = buffercounter + d_itemsize;
+	// Exceeded our storage capacity? So dump the buffer and clear it.
+	if (d_itemcount ==  d_chunksize) {
+	    if (d_start_capture) {
+		if (! dump_buffer() ) return -1;
 	    } else {
-		// Capture is enabled so dump the buffer.
-		if (!dump_buffer()) return -1;
+		clear_buffer();
 	    }
-	}
+	} 
+	// Our queue is not yet full.
+	char* newitem  = new char[d_itemsize];
+	assert(newitem != NULL);
+	memcpy(newitem,item,d_itemsize);
+	d_capture_buffer[d_itemcount] = newitem;
+	d_itemcount++;
     }
     return noutput_items;
 }

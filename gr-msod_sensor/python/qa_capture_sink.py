@@ -60,11 +60,14 @@ class qa_capture_sink (gr_unittest.TestCase):
 	for file in os.listdir("/tmp"):
     		if file.startswith("capture"):
 			os.remove("/tmp/" + file)
+	metadata = mongoclient.iqcapture.dataMessages.remove({"SensorID":"TestSensor"})
         self.tb = gr.top_block ()
 	self.u = blocks.file_source(gr.sizeof_float,"/tmp/testdata.bin",False)
 	self.throttle = blocks.throttle(itemsize=gr.sizeof_float,samples_per_sec=1000)
 	self.tb.connect(self.u,self.throttle)
-        self.sqr = capture.capture_sink(itemsize=gr.sizeof_float, chunksize = 500, capture_dir="/tmp", mongodb_port=MONGODB_PORT)
+	self.chunksize = 500
+	self.itemsize = gr.sizeof_float
+        self.sqr = capture.capture_sink(itemsize=self.itemsize, chunksize = self.chunksize, capture_dir="/tmp", mongodb_port=MONGODB_PORT)
 	self.tb.connect(self.throttle,self.sqr)
 
     def tearDown (self):
@@ -75,20 +78,22 @@ class qa_capture_sink (gr_unittest.TestCase):
 
     def test_001_t (self):
 	print "test_001_t"
-	self.sqr.start_capture()
 	initialCount = 0
 	self.sqr.set_data_message(generate_data_message())
+	self.sqr.start_capture()
         self.tb.run ()
 	size = 0
 	count = 0
 	for file in os.listdir("/tmp"):
     		if file.startswith("capture"):
+			print file
 			stat = os.stat("/tmp/" + file)
 			size = size + stat.st_size 
 			count = count + 1
+	self.assertEquals(count,1)
 	original_file_size = os.stat("/tmp/testdata.bin").st_size
 	print "original file size ", original_file_size, " capture file size ", size, " count ", count
-	self.assertEquals(size,original_file_size)
+	self.assertEquals(size,self.chunksize * self.itemsize)
         # check data TBD
 	metadata = mongoclient.iqcapture.dataMessages.find({"SensorID":"TestSensor"})
 	print "metadata count ", metadata.count()
