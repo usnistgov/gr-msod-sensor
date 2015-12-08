@@ -24,6 +24,7 @@
 #include <mongo/client/dbclient.h>
 #include <mongo/bson/bson.h>
 #include <msod_sensor/capture_sink.h>
+#include <pmt/pmt.h>
 #include <fstream>
 #include <vector>
 
@@ -55,6 +56,10 @@ namespace gr {
       // clear the buffer.
       void clear_buffer();
 
+      // handle message.
+      void message_handler(pmt::pmt_t message);
+
+
      public:
       capture_sink_impl(size_t itemsize, size_t chunksize, char* capture_dir, int mongodb_port);
       ~capture_sink_impl();
@@ -62,14 +67,14 @@ namespace gr {
       int work(int noutput_items,
          gr_vector_const_void_star &input_items,
          gr_vector_void_star &output_items);
-      // start capture
-      void start_capture();
-
-      // stop capture
-      void stop_capture();
 	
       // set the sensor id (for posting to the database).
       void set_data_message(char* data_message);
+
+      // start capture (only for testing).
+      void start_capture();
+      // stop capture
+      void stop_capture();
 
     };
       

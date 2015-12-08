@@ -29,6 +29,7 @@
 #include <gnuradio/logger.h>
 #include <mongo/bson/bson.h>
 #include <mongo/client/dbclient.h>
+#include <pmt/pmt.h>
 #include <ctime>
 #include <fstream>
 #include <iostream>
@@ -90,7 +91,8 @@ capture_sink_impl::capture_sink_impl(size_t itemsize, size_t chunksize, char* ca
         GR_LOG_ERROR(d_debug_logger,"Unexpected exception");
         throw e;
     }
-
+    message_port_register_in(pmt::mp("capture"));
+    set_msg_handler(pmt::mp("capture"),boost::bind(&gr::msod_sensor::capture_sink_impl::message_handler,this, _1));
 }
 
 /*
@@ -132,6 +134,19 @@ void capture_sink_impl::generate_timestamp() {
     }
     d_current_capture_file =  dirname;
 }
+
+void
+capture_sink_impl::message_handler(pmt::pmt_t msg) {
+#ifdef IQCAPTURE_DEBUG
+    GR_LOG_DEBUG(d_debug_logger,"capture_sink_impl::capture ");
+#endif
+    // TODO -- parse the msg.
+    d_start_capture = true;
+}
+
+/**
+* synchronous invocation that sets the capture flag. Invocable through python api.
+*/
 
 void
 capture_sink_impl::start_capture() {
@@ -180,7 +195,6 @@ capture_sink_impl::dump_buffer() {
     int count = 0;
     for (int i = 0; i < d_itemcount; i++) {
         char* item = d_capture_buffer[i];
-        GR_LOG_ERROR(d_debug_logger,"capture_sink_impl::dump_buffer: logging to  : " + std::to_string(i) + "\n");
         assert(item != NULL);
         int written = write(fd,item,d_itemsize);
         if (written != d_itemsize) {

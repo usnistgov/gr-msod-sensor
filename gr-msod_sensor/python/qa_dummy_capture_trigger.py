@@ -36,11 +36,12 @@ class qa_dummy_capture_trigger (gr_unittest.TestCase):
 	self.u = blocks.file_source(gr.sizeof_float,"/tmp/testdata.bin",False)
 	self.throttle = blocks.throttle(itemsize=gr.sizeof_float,samples_per_sec=1000)
 	self.tb.connect(self.u,self.throttle)
-        self.sqr = capture.iqcapture_sink(itemsize=gr.sizeof_float, chunksize = 500, capture_dir="/tmp",mongodb_port=MONGODB_PORT)
+        self.capture_sink = capture.iqcapture_sink(itemsize=gr.sizeof_float, chunksize = 500, capture_dir="/tmp",mongodb_port=MONGODB_PORT)
 	self.trigger = capture.dummy_capture_trigger(itemsize=gr.sizeof_float)
+	self.trigger.arm()
 	self.tb.connect(self.throttle,self.trigger)
-	self.tb.connect(self.trigger,self.sqr)
-	self.tb.msg_connect(self.trigger,"trigger",self.sqr,"capture")
+	self.tb.connect(self.trigger,self.capture_sink)
+	self.tb.msg_connect(self.trigger,"trigger",self.capture_sink,"capture")
 
 
     def test_001_t (self):

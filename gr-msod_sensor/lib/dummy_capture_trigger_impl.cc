@@ -76,11 +76,13 @@ dummy_capture_trigger_impl::forecast (int noutput_items, gr_vector_int &ninput_i
 
 void
 dummy_capture_trigger_impl::arm() {
+        GR_LOG_DEBUG(d_debug_logger,"dummy_capture_trigger::arm" );
 	this->d_armed = true;
 }
 
 void
 dummy_capture_trigger_impl::disarm() {
+        GR_LOG_DEBUG(d_debug_logger,"dummy_capture_trigger::disarm" );
 	this->d_armed = false;
 }
 
@@ -97,11 +99,11 @@ dummy_capture_trigger_impl::general_work (int noutput_items,
     unsigned int byte_size = noutput_items * this->d_itemsize;
     int buffercounter = 0;
     this->d_itemcount = this->d_itemcount + noutput_items;
-    GR_LOG_DEBUG(d_debug_logger,"dummy_capture_trigger::work " + std::to_string(noutput_items) );
     // Just signal the capture block after 1000 items.
-    if (this->d_itemcount > 500 && this->d_armed) {
+    if (this->d_itemcount > 5000 && this->d_armed) {
         GR_LOG_DEBUG(d_debug_logger,"dummy_capture_trigger::work pub" );
         message_port_pub(pmt::mp("trigger"),pmt::intern(std::string("start")));
+	this->d_armed = false;
     }
 
     in = (char*)input_items[0];

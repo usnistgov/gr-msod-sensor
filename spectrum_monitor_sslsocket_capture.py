@@ -269,6 +269,7 @@ class my_top_block(gr.top_block):
 	self.initialize_message_headers()
 	trigger = myblocks.dummy_capture_trigger(itemsize=gr.sizeof_gr_complex)
 	self.srvr = myblocks.sslsocket_sink(numpy.int8, self.num_ch,self.dest_host,self.port,self.sys_msg,self.loc_msg,self.data_msg,capture_sink,trigger)
+
 	
 
 	if usrp_rate > self.samp_rate:
@@ -278,7 +279,10 @@ class my_top_block(gr.top_block):
 
 	# Connect the blocks together.
 	self.connect(s2v, ffter, c2mag, self.aggr, self.stats, W2dBm, f2c, self.srvr)
+	# Second pipeline to the sink.
 	self.connect(self.u,trigger,capture_sink)
+	trigger.arm()
+	self.msg_connect(trigger,"trigger",capture_sink,"capture")
 
 
     def set_freq(self, target_freq):
