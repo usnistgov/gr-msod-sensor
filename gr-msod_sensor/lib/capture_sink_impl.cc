@@ -56,8 +56,8 @@ capture_sink::make(size_t itemsize, size_t chunksize, char* capture_dir, int mon
  */
 capture_sink_impl::capture_sink_impl(size_t itemsize, size_t chunksize, char* capture_dir, int mongodb_port)
     :gr::sync_block("capture_sink",
-                     gr::io_signature::make(1, 1, itemsize),
-                     gr::io_signature::make(0, 0, 0))
+                    gr::io_signature::make(1, 1, itemsize),
+                    gr::io_signature::make(0, 0, 0))
 {
     prefs *p = prefs::singleton();
 #ifdef IQCAPTURE_DEBUG
@@ -66,8 +66,8 @@ capture_sink_impl::capture_sink_impl(size_t itemsize, size_t chunksize, char* ca
     std::string log_level = p->get_string("LOG", "log_level", "info");
 #endif
     GR_LOG_SET_LEVEL(d_debug_logger,log_level);
-    GR_LOG_DEBUG(d_debug_logger,"capture_sink_impl:: itemsize = " + std::to_string(itemsize) + " chunksize = " + std::to_string(chunksize) + 
-	" capture_dir = "  + capture_dir  );
+    GR_LOG_DEBUG(d_debug_logger,"capture_sink_impl:: itemsize = " + std::to_string(itemsize) + " chunksize = " + std::to_string(chunksize) +
+                 " capture_dir = "  + capture_dir  );
 
     d_itemsize = itemsize;
     d_capture_dir = new char[strlen(capture_dir) + 1];
@@ -85,7 +85,7 @@ capture_sink_impl::capture_sink_impl(size_t itemsize, size_t chunksize, char* ca
             GR_LOG_ERROR(d_debug_logger,"failed to initialize the client driver");
             throw std::runtime_error("cannot connect to Mongo Client");
         }
-    	GR_LOG_DEBUG(d_debug_logger,"capture_sink_impl:: connected to mongod ");
+        GR_LOG_DEBUG(d_debug_logger,"capture_sink_impl:: connected to mongod ");
     } catch (std::exception& e) {
         GR_LOG_ERROR(d_debug_logger,"Unexpected exception");
         throw e;
@@ -98,7 +98,7 @@ capture_sink_impl::capture_sink_impl(size_t itemsize, size_t chunksize, char* ca
  */
 capture_sink_impl::~capture_sink_impl()
 {
-	
+
 }
 
 /*
@@ -128,7 +128,7 @@ void capture_sink_impl::generate_timestamp() {
         }
     }
     if ( d_current_capture_file != NULL) {
-	delete d_current_capture_file;
+        delete d_current_capture_file;
     }
     d_current_capture_file =  dirname;
 }
@@ -174,21 +174,21 @@ capture_sink_impl::dump_buffer() {
     assert(d_itemcount == d_chunksize);
     int fd = open(d_current_capture_file->c_str(), O_RDWR | O_CREAT, S_IWUSR | S_IRUSR);
     if (fd < 0 ) {
-    	GR_LOG_ERROR(d_debug_logger,"capture_sink_impl::dump_buffer: open failed on : " + *d_current_capture_file->c_str());
-	return false;
+        GR_LOG_ERROR(d_debug_logger,"capture_sink_impl::dump_buffer: open failed on : " + *d_current_capture_file->c_str());
+        return false;
     }
     int count = 0;
     for (int i = 0; i < d_itemcount; i++) {
-	char* item = d_capture_buffer[i];
+        char* item = d_capture_buffer[i];
         GR_LOG_ERROR(d_debug_logger,"capture_sink_impl::dump_buffer: logging to  : " + std::to_string(i) + "\n");
-	assert(item != NULL);
+        assert(item != NULL);
         int written = write(fd,item,d_itemsize);
-	if (written != d_itemsize) {
-    		GR_LOG_ERROR(d_debug_logger,"capture_sink_impl::dump_buffer: write failed. written =  " + std::to_string(written) 
-				+ " d_itemsize " + std::to_string(d_itemsize) + " item " );
-		return false;
-	}
-	count ++;
+        if (written != d_itemsize) {
+            GR_LOG_ERROR(d_debug_logger,"capture_sink_impl::dump_buffer: write failed. written =  " + std::to_string(written)
+                         + " d_itemsize " + std::to_string(d_itemsize) + " item " );
+            return false;
+        }
+        count ++;
     }
     close(fd);
     GR_LOG_DEBUG(d_debug_logger,"capture_sink_impl::dump_buffer: wrote " + std::to_string(count) + " elements to file : " + *d_current_capture_file);
@@ -197,9 +197,9 @@ capture_sink_impl::dump_buffer() {
     mongo::BSONObjBuilder builder;
     builder.appendElements(d_data_message);
     mongo::BSONObj data_message = builder.append("_capture_file",*d_current_capture_file)
-                                          .append("_capture_time",std::to_string(timev))
-                                          .append("_sample_count",std::to_string(d_itemcount))
-                                          .obj();
+                                  .append("_capture_time",std::to_string(timev))
+                                  .append("_sample_count",std::to_string(d_itemcount))
+                                  .obj();
     // Insert the message into mongodb.
     try {
         d_mongo_client.insert("iqcapture.dataMessages",data_message);
@@ -219,7 +219,7 @@ void
 capture_sink_impl::clear_buffer() {
     // Clear the capture vector. This also deletes the elements of the capture buffer.
     for (int i = 0; i < d_itemcount; i++) {
-	delete d_capture_buffer[i];
+        delete d_capture_buffer[i];
     }
     d_itemcount = 0;
 }
@@ -244,22 +244,22 @@ capture_sink_impl::work(int noutput_items,
 #endif
     int buffercounter = 0;
     for (int i = 0; i < noutput_items; i++ ) {
-	char* item =  (char*) (in + buffercounter);
-	buffercounter = buffercounter + d_itemsize;
-	// Exceeded our storage capacity? So dump the buffer and clear it.
-	if (d_itemcount ==  d_chunksize) {
-	    if (d_start_capture) {
-		if (! dump_buffer() ) return -1;
-	    } else {
-		clear_buffer();
-	    }
-	} 
-	// Our queue is not yet full.
-	char* newitem  = new char[d_itemsize];
-	assert(newitem != NULL);
-	memcpy(newitem,item,d_itemsize);
-	d_capture_buffer[d_itemcount] = newitem;
-	d_itemcount++;
+        char* item =  (char*) (in + buffercounter);
+        buffercounter = buffercounter + d_itemsize;
+        // Exceeded our storage capacity? So dump the buffer and clear it.
+        if (d_itemcount ==  d_chunksize) {
+            if (d_start_capture) {
+                if (! dump_buffer() ) return -1;
+            } else {
+                clear_buffer();
+            }
+        }
+        // Our queue is not yet full.
+        char* newitem  = new char[d_itemsize];
+        assert(newitem != NULL);
+        memcpy(newitem,item,d_itemsize);
+        d_capture_buffer[d_itemcount] = newitem;
+        d_itemcount++;
     }
     return noutput_items;
 }
