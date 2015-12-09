@@ -262,11 +262,7 @@ capture_sink_impl::work(int noutput_items,
         buffercounter = buffercounter + d_itemsize;
         // Exceeded our storage capacity? So dump the buffer and clear it.
         if (d_itemcount ==  d_chunksize) {
-            if (d_start_capture) {
-                if (! dump_buffer() ) return -1;
-            } else {
-                clear_buffer();
-            }
+           if (! dump_buffer() ) return -1;
         }
         // Our queue is not yet full.
         char* newitem  = new char[d_itemsize];
