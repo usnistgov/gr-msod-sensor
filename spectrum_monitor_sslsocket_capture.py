@@ -268,9 +268,8 @@ class my_top_block(gr.top_block):
         capture_sink = myblocks.capture_sink(itemsize=gr.sizeof_gr_complex, chunksize = 500, capture_dir="/tmp", mongodb_port=self.mongodb_port)
 	self.initialize_message_headers()
 	trigger = myblocks.dummy_capture_trigger(itemsize=gr.sizeof_gr_complex)
-	self.srvr = myblocks.sslsocket_sink(numpy.int8, self.num_ch,self.dest_host,self.port,self.sys_msg,self.loc_msg,self.data_msg,capture_sink,trigger)
-
-	
+	# Note: pass the trigger here so the trigger can be armed.
+	self.sslsocket_sink = myblocks.sslsocket_sink(numpy.int8, self.num_ch,self.dest_host,self.port,self.sys_msg,self.loc_msg,self.data_msg,capture_sink,trigger)
 
 	if usrp_rate > self.samp_rate:
 	    self.connect(self.u, resamp, s2v)
@@ -278,7 +277,7 @@ class my_top_block(gr.top_block):
 	    self.connect(self.u, s2v)
 
 	# Connect the blocks together.
-	self.connect(s2v, ffter, c2mag, self.aggr, self.stats, W2dBm, f2c, self.srvr)
+	self.connect(s2v, ffter, c2mag, self.aggr, self.stats, W2dBm, f2c, self.sslsocket_sink)
 	# Second pipeline to the sink.
 	self.connect(self.u,trigger,capture_sink)
 	trigger.arm()

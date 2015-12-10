@@ -26,11 +26,24 @@ import socket
 import ssl
 import json
 import struct
+import sys
+import os
 
 def command_handler(capture_sink, trigger,sock):
 	command = sock.recv(1024)
 	print "Got something"
-
+	commandJson = json.loads(str(command))
+	if commandJson["command"] == "arm" :
+		trigger.arm()
+		triggerType = commandJson["triggerType"]
+		if "triggerParams" in commandJson:
+			triggerParams = commandJson["triggerParams"]
+			trigger.setTriggerParams(json.dumps(triggerParams))
+	elif commandJson["command"] == "disarm" :
+		trigger.disarm()
+	else:
+		sys.exit()
+		os._exit_()
 
 class sslsocket_sink(gr.sync_block):
     """
