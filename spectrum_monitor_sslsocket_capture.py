@@ -41,6 +41,8 @@ import requests
 import numpy
 import struct
 import os
+import signal
+from multiprocessing import Process
 
 def getLocalUtcTimeStamp():
     t = time.mktime(time.gmtime())
@@ -269,7 +271,7 @@ class my_top_block(gr.top_block):
 	self.initialize_message_headers()
 	trigger = myblocks.dummy_capture_trigger(itemsize=gr.sizeof_gr_complex)
 	# Note: pass the trigger here so the trigger can be armed.
-	self.sslsocket_sink = myblocks.sslsocket_sink(numpy.int8, self.num_ch,self.dest_host,self.port,self.sys_msg,self.loc_msg,self.data_msg,capture_sink,trigger)
+	self.sslsocket_sink = myblocks.sslsocket_sink(numpy.int8, self.num_ch,self.dest_host,self.port,self.sys_msg,self.loc_msg,self.data_msg,capture_sink,trigger,os.getppid())
 
 	if usrp_rate > self.samp_rate:
 	    self.connect(self.u, resamp, s2v)
@@ -338,13 +340,34 @@ def main_loop(tb):
     tb.s.close()
     print 'Closed socket'
 
-if __name__ == '__main__':
-    t = ThreadClass()
-    t.start()
-
+def start_main_loop():
+    signal.signal(signal.SIGUSR1,sigusr1_handler)
     tb = my_top_block()
     try:
         main_loop(tb)
-
     except KeyboardInterrupt:
 	pass
+
+def sigusr1_handler(signo,frame):
+	print "got a signal " + str(signo)
+	# TODO -- reconfigure the system here.
+	# TODO -- close 
+	tb.stop()
+	os.kill(signal.SIGUSR2,os.getppid())
+	sys.exit()
+	os._exit_()
+
+def sigusr2_handler(signo,frame):
+    print "Got sigusr2 restarting loop."
+    time.sleep(10)
+    p = Process(target=start_main_loop)
+    p.start()
+	
+if __name__ == '__main__':
+    t = ThreadClass()
+    t.start()
+    signal.signal(signal.SIGUSR1,sigusr2_handler)
+    p = Process(target=start_main_loop)
+    p.start()
+
+  

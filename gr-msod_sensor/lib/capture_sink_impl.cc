@@ -183,7 +183,6 @@ capture_sink_impl::set_data_message(char* data_message) {
 bool
 capture_sink_impl::dump_buffer() {
     int buffercounter = 0;
-    d_start_capture = false;
     generate_timestamp();
     GR_LOG_ERROR(d_debug_logger,"capture_sink_impl::dump_buffer: logging to  : " + *d_current_capture_file );
     assert(d_itemcount == d_chunksize);
@@ -261,8 +260,13 @@ capture_sink_impl::work(int noutput_items,
         char* item =  (char*) (in + buffercounter);
         buffercounter = buffercounter + d_itemsize;
         // Exceeded our storage capacity? So dump the buffer and clear it.
-        if (d_itemcount ==  d_chunksize) {
-           if (! dump_buffer() ) return -1;
+        if (d_itemcount ==  d_chunksize && d_start_capture) {
+	   d_start_capture = false;
+           if (! dump_buffer() ) {
+		 return -1;
+	   } else {
+		return noutput_items;
+	   }
         }
         // Our queue is not yet full.
         char* newitem  = new char[d_itemsize];

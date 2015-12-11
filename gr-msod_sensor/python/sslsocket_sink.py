@@ -28,28 +28,33 @@ import json
 import struct
 import sys
 import os
+import signal
 
-def command_handler(capture_sink, trigger,sock):
-	command = sock.recv(1024)
-	print "Got something"
-	commandJson = json.loads(str(command))
-	if commandJson["command"] == "arm" :
-		trigger.arm()
-		triggerType = commandJson["triggerType"]
-		if "triggerParams" in commandJson:
-			triggerParams = commandJson["triggerParams"]
-			trigger.setTriggerParams(json.dumps(triggerParams))
-	elif commandJson["command"] == "disarm" :
-		trigger.disarm()
-	else:
-		sys.exit()
-		os._exit_()
+def command_handler(capture_sink, trigger,sock,pid):
+	try :
+		command = sock.recv(1024)
+		print "Got something"
+		commandJson = json.loads(str(command))
+		if commandJson["command"] == "arm" :
+			trigger.arm()
+			triggerType = commandJson["triggerType"]
+			if "triggerParams" in commandJson:
+				triggerParams = commandJson["triggerParams"]
+				trigger.setTriggerParams(json.dumps(triggerParams))
+		elif commandJson["command"] == "disarm" :
+			trigger.disarm()
+		else:
+			sys.exit()
+			os._exit_()
+	except:
+		os.kill(pid,signal.SIGUSR1)
+		
 
 class sslsocket_sink(gr.sync_block):
     """
     docstring for block sslsocket_sink
     """
-    def __init__(self, dtype, nitems_per_block, host,port,sys_msg,loc_msg,data_msg,capture_sink,trigger):
+    def __init__(self, dtype, nitems_per_block, host,port,sys_msg,loc_msg,data_msg,capture_sink,trigger,pid):
         gr.sync_block.__init__(self,
             name="sslsocket_sink",
             in_sig=[(dtype, nitems_per_block)],
@@ -59,7 +64,7 @@ class sslsocket_sink(gr.sync_block):
    	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
   	sock.connect((self.host,self.port))
         self.sock =  ssl.wrap_socket(sock)
-	p = Process(target=command_handler,args=(capture_sink,trigger,sock))
+	p = Process(target=command_handler,args=(capture_sink,trigger,sock,pid))
 	p.start()
 	self.send_obj(sys_msg)
 	self.send_obj(loc_msg)
