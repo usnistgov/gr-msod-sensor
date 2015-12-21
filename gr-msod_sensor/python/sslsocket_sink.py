@@ -30,31 +30,36 @@ import sys
 import os
 import signal
 import time
+import traceback
 
 def command_handler(capture_sink, trigger,sock,pid):
-	try :
-		command = sock.recv(1024)
-		print ">>>>>>>>>>>>>>> Got something ",command
-		commandJson = json.loads(command)
-		if commandJson["command"] == "arm" :
-			trigger.arm()
-			if "triggerParams" in commandJson:
+	while True:
+		try :
+			command = sock.recv(1024)
+			commandJson = json.loads(str(command))
+			print ">>>>>>>>>>>>>>> Got something ",json.dumps(commandJson,indent=4)
+			if commandJson["command"] == "arm" :
+			   print "Arming trigger"
+			   trigger.arm()
+			   if "triggerParams" in commandJson:
 				triggerParams = commandJson["triggerParams"]
 				trigger.setTriggerParams(json.dumps(triggerParams))
-		elif commandJson["command"] == "disarm" :
-			trigger.disarm()
-		else:
+			elif commandJson["command"] == "disarm" :
+			   trigger.disarm()
+			else:
+			   sock.close()
+			   time.sleep(2)
+			   os.kill(pid,signal.SIGUSR1)
+			   sys.exit()
+			   os._exit_()
+		except:
+			traceback.print_exc()
 			sock.close()
 			time.sleep(2)
 			os.kill(pid,signal.SIGUSR1)
 			sys.exit()
 			os._exit_()
-	except:
-		sock.close()
-		time.sleep(2)
-		os.kill(pid,signal.SIGUSR1)
-		sys.exit()
-		os._exit_()
+	
 		
 
 class sslsocket_sink(gr.sync_block):

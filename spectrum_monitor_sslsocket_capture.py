@@ -282,7 +282,6 @@ class my_top_block(gr.top_block):
 	self.connect(s2v, ffter, c2mag, self.aggr, self.stats, W2dBm, f2c, self.sslsocket_sink)
 	# Second pipeline to the sink.
 	self.connect(self.u,trigger,capture_sink)
-	trigger.arm()
 	self.msg_connect(trigger,"trigger",capture_sink,"capture")
 
     def disconnect(self):
