@@ -285,6 +285,8 @@ class my_top_block(gr.top_block):
 	trigger.arm()
 	self.msg_connect(trigger,"trigger",capture_sink,"capture")
 
+    def disconnect(self):
+	self.sslsocket_sink.disconnect()
 
     def set_freq(self, target_freq):
         """
@@ -353,6 +355,7 @@ def sigusr1_handler(signo,frame):
 	# TODO -- reconfigure the system here.
 	# TODO -- close 
 	tb.stop()
+	tb.disconnect()
 	os.kill(signal.SIGUSR2,os.getppid())
 	sys.exit()
 	os._exit_()

@@ -29,25 +29,32 @@ import struct
 import sys
 import os
 import signal
+import time
 
 def command_handler(capture_sink, trigger,sock,pid):
 	try :
 		command = sock.recv(1024)
-		print "Got something"
-		commandJson = json.loads(str(command))
+		print ">>>>>>>>>>>>>>> Got something ",command
+		commandJson = json.loads(command)
 		if commandJson["command"] == "arm" :
 			trigger.arm()
-			triggerType = commandJson["triggerType"]
 			if "triggerParams" in commandJson:
 				triggerParams = commandJson["triggerParams"]
 				trigger.setTriggerParams(json.dumps(triggerParams))
 		elif commandJson["command"] == "disarm" :
 			trigger.disarm()
 		else:
+			sock.close()
+			time.sleep(2)
+			os.kill(pid,signal.SIGUSR1)
 			sys.exit()
 			os._exit_()
 	except:
+		sock.close()
+		time.sleep(2)
 		os.kill(pid,signal.SIGUSR1)
+		sys.exit()
+		os._exit_()
 		
 
 class sslsocket_sink(gr.sync_block):
@@ -64,7 +71,7 @@ class sslsocket_sink(gr.sync_block):
    	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
   	sock.connect((self.host,self.port))
         self.sock =  ssl.wrap_socket(sock)
-	p = Process(target=command_handler,args=(capture_sink,trigger,sock,pid))
+	p = Process(target=command_handler,args=(capture_sink,trigger,self.sock,pid))
 	p.start()
 	self.send_obj(sys_msg)
 	self.send_obj(loc_msg)
@@ -77,6 +84,10 @@ class sslsocket_sink(gr.sync_block):
 	ascii_hdr = "%d\r" % len(packed_msg)
 	self.sock.send(ascii_hdr)
 	self.sock.send(packed_msg)
+
+    def disconnect(self):
+	print "ssl_socket_sink: disconnect"
+	self.sock.close()
 
 
     def work(self, input_items, output_items):
