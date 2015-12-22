@@ -75,6 +75,9 @@ class sslsocket_sink(gr.sync_block):
 	self.host = host
 	self.port = port
    	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	self.unwrapped_socket = sock
+	sock.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER,                                                                                                                     
+                 struct.pack('ii', 1, 0))
   	sock.connect((self.host,self.port))
         self.sock =  ssl.wrap_socket(sock)
 	p = Thread(target=command_handler,args=(capture_sink,trigger,self.sock,pid))
@@ -101,6 +104,11 @@ class sslsocket_sink(gr.sync_block):
         in0 = input_items[0]
         num_input_items = len(in0)
 	for i in range(num_input_items):
-            self.sock.send(in0[i])
+	    try:
+            	self.sock.send(in0[i])
+	    except:
+		self.unwrapped_socket.close()
+		self.sock.close()
+		return -1
         return num_input_items
 
