@@ -31,7 +31,7 @@ namespace gr {
      private:
 	int d_itemcount;
 	int d_itemsize;
-	bool d_armed;
+	volatile bool d_armed;
 	
      public:
       dummy_capture_trigger_impl(size_t itemsize);

@@ -31,6 +31,7 @@ import os
 import signal
 import time
 import traceback
+from threading import Thread
 
 def command_handler(capture_sink, trigger,sock,pid):
 	while True:
@@ -76,7 +77,7 @@ class sslsocket_sink(gr.sync_block):
    	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
   	sock.connect((self.host,self.port))
         self.sock =  ssl.wrap_socket(sock)
-	p = Process(target=command_handler,args=(capture_sink,trigger,self.sock,pid))
+	p = Thread(target=command_handler,args=(capture_sink,trigger,self.sock,pid))
 	p.start()
 	self.send_obj(sys_msg)
 	self.send_obj(loc_msg)
