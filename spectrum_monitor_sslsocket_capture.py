@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 #
 # Copyright 2005,2007,2011 Free Software Foundation, Inc.
 #
@@ -42,7 +41,9 @@ import numpy
 import struct
 import os
 import signal
+import traceback
 from multiprocessing import Process
+
 
 def getLocalUtcTimeStamp():
     t = time.mktime(time.gmtime())
@@ -271,7 +272,7 @@ class my_top_block(gr.top_block):
 	self.initialize_message_headers()
 	trigger = myblocks.dummy_capture_trigger(itemsize=gr.sizeof_gr_complex)
 	# Note: pass the trigger here so the trigger can be armed.
-	self.sslsocket_sink = myblocks.sslsocket_sink(numpy.int8, self.num_ch,self.dest_host,self.port,self.sys_msg,self.loc_msg,self.data_msg,capture_sink,trigger,os.getppid())
+	self.sslsocket_sink = myblocks.sslsocket_sink(numpy.int8, self.num_ch,self.dest_host,self.port,self.sys_msg,self.loc_msg,self.data_msg,capture_sink,trigger,os.getpid())
 
 	if usrp_rate > self.samp_rate:
 	    self.connect(self.u, resamp, s2v)
@@ -342,6 +343,8 @@ def main_loop(tb):
     print 'Closed socket'
 
 def start_main_loop():
+    time.sleep(3)
+    global tb
     signal.signal(signal.SIGUSR1,sigusr1_handler)
     tb = my_top_block()
     try:
@@ -350,26 +353,24 @@ def start_main_loop():
 	pass
 
 def sigusr1_handler(signo,frame):
-	print "got a signal " + str(signo)
+	print "<<<<<<<<< got a signal " + str(signo) 
 	# TODO -- reconfigure the system here.
 	# TODO -- close 
 	tb.stop()
 	tb.disconnect()
-	os.kill(signal.SIGUSR2,os.getppid())
+	import subprocess
+	invocation = ['python'] + sys.argv
+	print "args "  + str( invocation ) 
+	subprocess.call(invocation)
 	sys.exit()
 	os._exit_()
 
-def sigusr2_handler(signo,frame):
-    print "Got sigusr2 restarting loop."
-    time.sleep(10)
-    p = Process(target=start_main_loop)
-    p.start()
+
 	
 if __name__ == '__main__':
+    mychild = Process(target=start_main_loop)
+    mychild.start()
     t = ThreadClass()
     t.start()
-    signal.signal(signal.SIGUSR1,sigusr2_handler)
-    p = Process(target=start_main_loop)
-    p.start()
 
   

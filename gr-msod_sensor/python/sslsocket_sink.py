@@ -34,6 +34,7 @@ import traceback
 from threading import Thread
 
 def command_handler(capture_sink, trigger,sock,pid):
+	print "command_handler : starting "  + str(pid)
 	while True:
 		try :
 			command = sock.recv(1024)
@@ -49,14 +50,12 @@ def command_handler(capture_sink, trigger,sock,pid):
 			   trigger.disarm()
 			else:
 			   sock.close()
-			   time.sleep(2)
 			   os.kill(pid,signal.SIGUSR1)
 			   sys.exit()
 			   os._exit_()
 		except:
 			traceback.print_exc()
 			sock.close()
-			time.sleep(2)
 			os.kill(pid,signal.SIGUSR1)
 			sys.exit()
 			os._exit_()
