@@ -44,6 +44,10 @@ import signal
 import traceback
 from multiprocessing import Process
 
+import argparse
+import requests
+import unittest
+
 
 def getLocalUtcTimeStamp():
     t = time.mktime(time.gmtime())
@@ -86,6 +90,20 @@ class my_top_block(gr.top_block):
     	print 'server response:', r.text
     	json = r.json()
 
+	#self.assertTrue(json != None)
+	#self.assertTrue(json["sensorConfig"]["SensorID"] == self.sensorId)
+
+	#Reads in min & max frequency
+	activeBands = json["sensorConfig"]["thresholds"]
+	for band in activeBands.values():
+		if band["active"]:
+			self.start_freq = band["minFreqHz"]
+			self.stop_freq = band["maxFreqHz"]
+			print str(band["minFreqHz"])
+			print str(band["maxFreqHz"])
+
+
+
     def initialize_message_headers(self):
     	self.loc_msg = self.read_json_from_file('sensor.loc')
     	self.sys_msg = self.read_json_from_file('sensor.sys')
@@ -98,12 +116,10 @@ class my_top_block(gr.top_block):
     	self.data_msg['t'] = ts
     	self.data_msg['t1'] = ts
     	# Fix up the data message in accordance with various input parameters.
-    	f_start = int(self.center_freq - self.bandwidth / 2.0 -0.5)
-    	f_stop = int (f_start + self.bandwidth + 0.5)
     	det = 'Average' if self.det_type == 'avg' else 'Peak'
     	self.data_msg['SensorID'] = self.sensorId
-    	self.data_msg['mPar']['fStart'] = f_start
-    	self.data_msg['mPar']['fStop'] = f_stop
+    	self.data_msg['mPar']['fStart'] = self.start_freq
+    	self.data_msg['mPar']['fStop'] = self.stop_freq
     	self.data_msg['mPar']['Atten'] = self.atten
     	self.data_msg['mPar']['n'] = self.num_ch
     	self.data_msg['mPar']['tm'] = self.meas_duration
@@ -111,7 +127,8 @@ class my_top_block(gr.top_block):
     def __init__(self):
         gr.top_block.__init__(self)
 
-        usage = "usage: %prog [options] center_freq band_width"
+
+        usage = "usage: %prog [options]" #center_freq band_width"
         parser = OptionParser(option_class=eng_option, usage=usage)
         parser.add_option("-a", "--args", type="string", default="",
                           help="UHD device device address args [default=%default]")
@@ -145,12 +162,11 @@ class my_top_block(gr.top_block):
 	parser.add_option("-m","--mongod_port", type = "int", default = 2017, help="Mongodb port")
 
         (options, args) = parser.parse_args()
-        if len(args) != 2:
-            parser.print_help()
+        if len(args) != 0:
+            #parser.print_help()
+            print "Please do not add Center Frequency or bandwidth (previously required values).  They are read from the server and values here are not used."
             sys.exit(1)
-
-	self.center_freq = eng_notation.str_to_num(args[0])
-	self.bandwidth = eng_notation.str_to_num(args[1])
+	
 	self.dest_host = options.dest_host
 	self.samp_rate = options.samp_rate
         self.fft_size = options.fft_size
@@ -158,9 +174,7 @@ class my_top_block(gr.top_block):
 	self.sensorId = options.sensorId
 	self.det_type = options.det_type
 	self.mongodb_port = options.mongod_port
-
 	self.read_configuration()
-
 
         if not options.real_time:
             realtime = False
@@ -173,12 +187,12 @@ class my_top_block(gr.top_block):
                 realtime = False
                 print "Note: failed to enable realtime scheduling"
 
-        # build graph
+	# build graph
         self.u = uhd.usrp_source(device_addr=options.args,
                                  stream_args=uhd.stream_args('fc32'))
 
         # Set the subdevice spec
-        if(options.spec):
+        f(options.spec):
             self.u.set_subdev_spec(options.spec, 0)
 
         # Set the antenna
@@ -220,14 +234,14 @@ class my_top_block(gr.top_block):
 
         c2mag = blocks.complex_to_mag_squared(self.fft_size)
 
+        #Calculate bandwidth & center frequency from start/stop values
+	self.bandwidth = self.stop_freq - self.start_freq
+	self.center_freq = self.start_freq + round(self.bandwidth/2)
+
 	self.bin2ch_map = [0] * self.fft_size
         hz_per_bin = self.samp_rate / self.fft_size
 	channel_bw = hz_per_bin * round(self.bandwidth / self.num_ch / hz_per_bin)
 	self.bandwidth = channel_bw * self.num_ch
-	self.start_freq = int(self.center_freq - self.bandwidth/2.0 -0.5)
-	self.stop_freq = int (self.start_freq + self.bandwidth +0.5)
-
-
 
 	for j in range(self.fft_size):
 	    fj = self.bin_freq(j, self.center_freq)
@@ -354,8 +368,6 @@ def start_main_loop():
 
 def sigusr1_handler(signo,frame):
 	print "<<<<<<<<< got a signal " + str(signo) 
-	# TODO -- reconfigure the system here.
-	# TODO -- close 
 	tb.stop()
 	tb.disconnect()
 	import subprocess
