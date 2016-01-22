@@ -33,12 +33,14 @@ import time
 import traceback
 from threading import Thread
 
-def command_handler(capture_sink, trigger,sock,pid):
+def command_handler(capture_sink, trigger,sock,top_block,pid):
 	print "command_handler : starting "  + str(pid)
 	while True:
 		try :
 			command = sock.recv(1024)
+			print "command = " , str(command)
 			commandJson = json.loads(str(command))
+		        print commandJson
 			print ">>>>>>>>>>>>>>> Got something ",json.dumps(commandJson,indent=4)
 			if commandJson["command"] == "arm" :
 			   print "Arming trigger"
@@ -49,16 +51,12 @@ def command_handler(capture_sink, trigger,sock,pid):
 			elif commandJson["command"] == "disarm" :
 			   trigger.disarm()
 			else:
-			   sock.close()
 			   os.kill(pid,signal.SIGUSR1)
-			   sys.exit()
-			   os._exit_()
+			   os._exit(0)
 		except:
 			traceback.print_exc()
-			sock.close()
 			os.kill(pid,signal.SIGUSR1)
-			sys.exit()
-			os._exit_()
+			os._exit(0)
 	
 		
 
@@ -66,7 +64,7 @@ class sslsocket_sink(gr.sync_block):
     """
     docstring for block sslsocket_sink
     """
-    def __init__(self, dtype, nitems_per_block, host,port,sys_msg,loc_msg,data_msg,capture_sink,trigger,pid):
+    def __init__(self, dtype, nitems_per_block, host,port,sys_msg,loc_msg,data_msg,capture_sink,trigger,top_block,pid):
         gr.sync_block.__init__(self,
             name="sslsocket_sink",
             in_sig=[(dtype, nitems_per_block)],
@@ -79,11 +77,29 @@ class sslsocket_sink(gr.sync_block):
                  struct.pack('ii', 1, 0))
   	sock.connect((self.host,self.port))
         self.sock =  ssl.wrap_socket(sock)
-	p = Thread(target=command_handler,args=(capture_sink,trigger,self.sock,pid))
-	p.start()
+	self.sys_msg = sys_msg
 	self.send_obj(sys_msg)
+	self.loc_msg = loc_msg
 	self.send_obj(loc_msg)
+	self.data_msg = data_msg
 	self.send_obj(data_msg)
+	commandThread = Thread(target=command_handler,args=(capture_sink,trigger,self.sock,top_block,pid))
+	commandThread.start()
+
+    def reconnect(self,fStart,fStop):
+	self.sock.close()
+   	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	self.unwrapped_socket = sock
+	sock.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER,                                                                                                                     
+                 struct.pack('ii', 1, 0))
+  	sock.connect((self.host,self.port))
+        self.sock =  ssl.wrap_socket(sock)
+	self.send_obj(self.sys_msg)
+	self.send_obj(self.loc_msg)
+	self.send_obj(self.data_msg)
+	commandThread = Thread(target=command_handler,args=(capture_sink,trigger,self.sock,top_block,pid))
+	commandThread.start()
+        
 
     def send_obj(self, obj):
 	msg = json.dumps(obj)

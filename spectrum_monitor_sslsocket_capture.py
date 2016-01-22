@@ -83,15 +83,13 @@ class my_top_block(gr.top_block):
     	print 'server response:', r.text
     	json = r.json()
     	port = json["port"]
-    	print 'socket port =',port #, response['port']
+    	print 'socket port =',port 
     	self.port = port
     	print 'Requestion port on:'+ 'https://'+self.dest_host+':443/sensordb/getSensorConfig/'+sensor_id
     	r = requests.post('https://'+self.dest_host+':443/sensordb/getSensorConfig/'+sensor_id, verify=False)
     	print 'server response:', r.text
     	json = r.json()
 
-	#self.assertTrue(json != None)
-	#self.assertTrue(json["sensorConfig"]["SensorID"] == self.sensorId)
 
 	#Reads in min & max frequency
 	activeBands = json["sensorConfig"]["thresholds"]
@@ -192,7 +190,7 @@ class my_top_block(gr.top_block):
                                  stream_args=uhd.stream_args('fc32'))
 
         # Set the subdevice spec
-        f(options.spec):
+        if(options.spec):
             self.u.set_subdev_spec(options.spec, 0)
 
         # Set the antenna
@@ -286,7 +284,7 @@ class my_top_block(gr.top_block):
 	self.initialize_message_headers()
 	trigger = myblocks.dummy_capture_trigger(itemsize=gr.sizeof_gr_complex)
 	# Note: pass the trigger here so the trigger can be armed.
-	self.sslsocket_sink = myblocks.sslsocket_sink(numpy.int8, self.num_ch,self.dest_host,self.port,self.sys_msg,self.loc_msg,self.data_msg,capture_sink,trigger,os.getpid())
+	self.sslsocket_sink = myblocks.sslsocket_sink(numpy.int8, self.num_ch,self.dest_host,self.port,self.sys_msg,self.loc_msg,self.data_msg,capture_sink,trigger,self,os.getpid())
 
 	if usrp_rate > self.samp_rate:
 	    self.connect(self.u, resamp, s2v)
@@ -366,6 +364,8 @@ def start_main_loop():
     except KeyboardInterrupt:
 	pass
 
+       
+
 def sigusr1_handler(signo,frame):
 	print "<<<<<<<<< got a signal " + str(signo) 
 	tb.stop()
@@ -374,8 +374,7 @@ def sigusr1_handler(signo,frame):
 	invocation = ['python'] + sys.argv
 	print "args "  + str( invocation ) 
 	subprocess.call(invocation)
-	sys.exit()
-	os._exit_()
+	os._exit(0)
 
 
 	
