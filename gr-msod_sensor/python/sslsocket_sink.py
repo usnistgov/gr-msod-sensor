@@ -52,10 +52,12 @@ def command_handler(capture_sink, trigger,sock,top_block,pid):
 			   trigger.disarm()
 			else:
 			   os.kill(pid,signal.SIGUSR1)
+			   sys.exit(0)
 			   os._exit(0)
 		except:
 			traceback.print_exc()
 			os.kill(pid,signal.SIGUSR1)
+			sys.exit(0)
 			os._exit(0)
 	
 		

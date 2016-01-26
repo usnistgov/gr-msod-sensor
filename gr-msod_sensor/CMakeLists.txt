@@ -115,6 +115,7 @@ include_directories(
     ${Boost_INCLUDE_DIRS}
     ${CPPUNIT_INCLUDE_DIRS}
     ${MONGO_CLIENT_DIR}/include
+    ${LIBCURL_INSTALL_DIR}/include
 #    ${GNURADIO_RUNTIME_INCLUDE_DIRS}
     ${GNURADIO_ALL_INCLUDE_DIRS}
 )
@@ -124,6 +125,7 @@ link_directories(
     ${CPPUNIT_LIBRARY_DIRS}
     ${GNURADIO_RUNTIME_LIBRARY_DIRS}
     ${MONGO_CLIENT_DIR}/lib
+    ${LIBCURL_INSTALL_DIR}/lib
 )
 
 
