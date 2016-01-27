@@ -38,12 +38,14 @@ namespace gr {
       // Nothing to declare in this block.
       char*  d_capture_dir;
       int    d_itemsize;
+      int    d_time_offset;
       char*  d_websocket_url; 
       size_t d_chunksize;
       long   d_itemcount;
       bool   d_start_capture;
       long   d_capture_freq;
       char** d_capture_buffer;
+      char*  d_event_url;
       mongo::BSONObj d_data_message;
       std::ofstream d_logfile;
       std::string* d_current_capture_file;
@@ -61,7 +63,7 @@ namespace gr {
 
 
      public:
-      capture_sink_impl(size_t itemsize, size_t chunksize, char* capture_dir, int mongodb_port);
+      capture_sink_impl(size_t itemsize, size_t chunksize, char* capture_dir, int mongodb_port, char* event_url, int time_offset);
       ~capture_sink_impl();
       // Where all the action really happens
       int work(int noutput_items,

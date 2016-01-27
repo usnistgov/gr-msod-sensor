@@ -280,8 +280,14 @@ class my_top_block(gr.top_block):
         print "gain =", options.gain, "dB in range (%0.1f dB, %0.1f dB)" % (float(g.start()), float(g.stop()))
 	self.atten = float(g.stop()) - options.gain
 
-        capture_sink = myblocks.capture_sink(itemsize=gr.sizeof_gr_complex, chunksize = 500, capture_dir="/tmp", mongodb_port=self.mongodb_port)
+	
+        delta = long(round(getLocalUtcTimeStamp() - time.time()))
+
+        capture_sink = myblocks.capture_sink(itemsize=gr.sizeof_gr_complex, chunksize = 500, capture_dir="/tmp", mongodb_port=self.mongodb_port,\
+		event_url="https://" + self.dest_host + ":" + str(443) +  "/eventstream/postCaptureEvent", time_offset = delta)
+	
 	self.initialize_message_headers()
+	capture_sink.set_data_message(str(json.dumps(self.data_msg)))
 	trigger = myblocks.dummy_capture_trigger(itemsize=gr.sizeof_gr_complex)
 	# Note: pass the trigger here so the trigger can be armed.
 	self.sslsocket_sink = myblocks.sslsocket_sink(numpy.int8, self.num_ch,self.dest_host,self.port,self.sys_msg,self.loc_msg,self.data_msg,capture_sink,trigger,self,os.getpid())

@@ -26,6 +26,7 @@ import os
 import json
 import time
 import pymongo
+import os
 global mongoclient
 
 global MONGODB_PORT 
@@ -47,7 +48,7 @@ def generate_data_message():
     mpar = Struct(fStart=f_start, fStop=f_stop, n=num_ch, td=-1, tm=meas_duration, Det='Peak', Atten=atten)
     # Need to add a field for overflow indicator
     ts = int(time.time())
-    data = Struct(Ver='1.0.12', Type='Data', SensorID=sensor_id, SensorKey='NaN', t=ts, Sys2Detect='LTE', \
+    data = Struct(Ver='1.0.12', Type='Data', SensorID=sensor_id, SensorKey='NaN',  Sys2Detect='LTE', \
 	Sensitivity='Low', mType='FFT-Power', t1=ts, a=1, nM=-1, Ta=-1, OL='NaN', wnI=-77.0, \
 	Comment='Using hard-coded (not detected) system noise power for wnI', \
 	Processed='False', DataType = 'Binary - int8', ByteOrder='N/A', Compression='None', mPar=mpar)
@@ -67,7 +68,8 @@ class qa_capture_sink (gr_unittest.TestCase):
 	self.tb.connect(self.u,self.throttle)
 	self.chunksize = 500
 	self.itemsize = gr.sizeof_float
-        self.sqr = capture.capture_sink(itemsize=self.itemsize, chunksize = self.chunksize, capture_dir="/tmp", mongodb_port=MONGODB_PORT)
+	msodHost = os.environ.get("MSOD_WEB_HOST")
+        self.sqr = capture.capture_sink(itemsize=self.itemsize, chunksize = self.chunksize, capture_dir="/tmp", mongodb_port=MONGODB_PORT, event_url="https://" + msodHost + ":" + str(443)  + "/eventstream/postCaptureEvent",time_offset = 0)
 	self.tb.connect(self.throttle,self.sqr)
 
     def tearDown (self):
