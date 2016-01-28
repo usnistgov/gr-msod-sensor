@@ -38,6 +38,9 @@
 #include <cassert>
 #include "capture_sink_impl.h"
 #include <curl/curl.h>
+#include <boost/interprocess/anonymous_shared_memory.hpp>
+#include <boost/interprocess/mapped_region.hpp>
+
 
 
 
@@ -71,6 +74,7 @@ capture_sink_impl::capture_sink_impl(size_t itemsize, size_t chunksize, char* ca
     GR_LOG_DEBUG(d_debug_logger,"capture_sink_impl:: itemsize = " + std::to_string(itemsize) + " chunksize = " + std::to_string(chunksize) +
                  " capture_dir = "  + capture_dir  );
 
+    d_start_capture = new boost::interprocess::mapped_region(boost::interprocess::anonymous_shared_memory(sizeof(int)));
     d_time_offset = time_offset;
     d_itemsize = itemsize;
     d_capture_dir = new char[strlen(capture_dir) + 1];
@@ -81,7 +85,7 @@ capture_sink_impl::capture_sink_impl(size_t itemsize, size_t chunksize, char* ca
     d_capture_buffer = new char*[chunksize];
     memset(d_capture_buffer,0,sizeof(d_capture_buffer));
     generate_timestamp();
-    d_start_capture = false;
+    memset(d_start_capture->get_address(), 0, d_start_capture->get_size());
     d_event_url = new char[strlen(event_url) + 1];
     strcpy(d_event_url,event_url);
     std::string errmsg;
@@ -144,8 +148,8 @@ capture_sink_impl::message_handler(pmt::pmt_t msg) {
 #ifdef IQCAPTURE_DEBUG
     GR_LOG_DEBUG(d_debug_logger,"capture_sink_impl::capture ");
 #endif
-    // TODO -- parse the msg.
-    d_start_capture = true;
+   //Write all the memory to 1
+   memset(d_start_capture->get_address(), 1, sizeof(int));
 }
 
 /**
@@ -157,7 +161,7 @@ capture_sink_impl::start_capture() {
 #ifdef IQCAPTURE_DEBUG
     GR_LOG_DEBUG(d_debug_logger,"capture_sink_impl::start_capture ");
 #endif
-    d_start_capture = true;
+   memset(d_start_capture->get_address(), 1, sizeof(int));
 }
 
 void
@@ -165,16 +169,16 @@ capture_sink_impl::stop_capture() {
 #ifdef IQCAPTURE_DEBUG
     GR_LOG_DEBUG(d_debug_logger,"capture_sink_impl::stop_capture ");
 #endif
-    d_start_capture = false;
+   memset(d_start_capture->get_address(), 0, sizeof(int));
 }
 
 
 void
-capture_sink_impl::set_data_message(char* data_message) {
+capture_sink_impl::set_event_message(char* event_message) {
     try {
-        d_data_message = mongo::fromjson(std::string(data_message));
+        d_event_message = mongo::fromjson(std::string(event_message));
         // The "t" field is updated later when the message is POSTed.
-        d_data_message.removeField("t");
+        d_event_message.removeField("t");
     } catch ( mongo::DBException& e) {
         GR_LOG_ERROR(d_debug_logger,"failed to initialize the client driver");
         throw std::runtime_error("Invalid data message");
@@ -216,10 +220,10 @@ capture_sink_impl::dump_buffer() {
     long universal_timestamp = (long) timev + d_time_offset;
 
     mongo::BSONObjBuilder builder;
-    builder.appendElements(d_data_message);
+    builder.appendElements(d_event_message);
     mongo::BSONObj data_message = builder.append("_capture_file",*d_current_capture_file)
                                   .append("t",std::to_string(universal_timestamp))
-                                  .append("_sample_count",std::to_string(d_itemcount))
+                                  .append("sample_count",std::to_string(d_itemcount))
                                   .obj();
 
 
@@ -287,7 +291,9 @@ capture_sink_impl::work(int noutput_items,
     const char *in = (const char *) input_items[0];
     char *out = (char *) output_items[0];
     // Capture is not enabled. Just pass through.
-    if (!d_start_capture) return noutput_items;
+    int start_capture_flag;
+    memcpy(&start_capture_flag,d_start_capture->get_address(),sizeof(int));
+    if (!start_capture_flag) return noutput_items;
     unsigned int byte_size = noutput_items * d_itemsize;
 #ifdef IQCAPTURE_DEBUG
     GR_LOG_DEBUG(d_debug_logger,"capture_sink_impl::work byte_size " + std::to_string(byte_size));
@@ -298,8 +304,8 @@ capture_sink_impl::work(int noutput_items,
         char* item =  (char*) (in + buffercounter);
         buffercounter = buffercounter + d_itemsize;
         // Exceeded our storage capacity? So dump the buffer and clear it.
-        if (d_itemcount ==  d_chunksize && d_start_capture) {
-	   d_start_capture = false;
+        if (d_itemcount ==  d_chunksize && start_capture_flag) {
+    	   memset(d_start_capture->get_address(), 0, d_start_capture->get_size());
            if (! dump_buffer() ) {
 		 return -1;
 	   } else {

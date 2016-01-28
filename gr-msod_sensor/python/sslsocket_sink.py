@@ -85,7 +85,7 @@ class sslsocket_sink(gr.sync_block):
 	self.send_obj(loc_msg)
 	self.data_msg = data_msg
 	self.send_obj(data_msg)
-	commandThread = Thread(target=command_handler,args=(capture_sink,trigger,self.sock,top_block,pid))
+	commandThread = Process(target=command_handler,args=(capture_sink,trigger,self.sock,top_block,pid))
 	commandThread.start()
 
     def reconnect(self,fStart,fStop):
@@ -99,7 +99,7 @@ class sslsocket_sink(gr.sync_block):
 	self.send_obj(self.sys_msg)
 	self.send_obj(self.loc_msg)
 	self.send_obj(self.data_msg)
-	commandThread = Thread(target=command_handler,args=(capture_sink,trigger,self.sock,top_block,pid))
+	commandThread = Process(target=command_handler,args=(capture_sink,trigger,self.sock,top_block,pid))
 	commandThread.start()
         
 

@@ -54,6 +54,21 @@ def generate_data_message():
 	Processed='False', DataType = 'Binary - int8', ByteOrder='N/A', Compression='None', mPar=mpar)
     return json.dumps(data)
 
+def generate_capture_message():
+    f_start = 703990000
+    f_stop  = 714994000
+    num_ch = 56
+    atten = 30
+    meas_duration = 100
+    sensor_id = "TestSensor"
+    mpar = Struct(fStart=f_start, fStop=f_stop, n=num_ch, td=-1, tm=meas_duration, Atten=atten)
+    # Need to add a field for overflow indicator
+    ts = int(time.time())
+    data = Struct(Ver='1.0.12', Type='Event', SensorID=sensor_id, SensorKey='NaN',  Sys2Detect='LTE', \
+	Sensitivity='Low', mType='Raw-IQ', t1=ts, a=1, nM=-1, Ta=-1, OL='NaN', wnI=-77.0, \
+	Comment='IQ capture', \
+	DataType = 'Binary - int8', ByteOrder='N/A', Compression='None', mPar=mpar)
+    return json.dumps(data)
 
 class qa_capture_sink (gr_unittest.TestCase):
 
@@ -69,8 +84,8 @@ class qa_capture_sink (gr_unittest.TestCase):
 	self.chunksize = 500
 	self.itemsize = gr.sizeof_float
 	msodHost = os.environ.get("MSOD_WEB_HOST")
-        self.sqr = capture.capture_sink(itemsize=self.itemsize, chunksize = self.chunksize, capture_dir="/tmp", mongodb_port=MONGODB_PORT, event_url="https://" + msodHost + ":" + str(443)  + "/eventstream/postCaptureEvent",time_offset = 0)
-	self.tb.connect(self.throttle,self.sqr)
+        self.capture_sink = capture.capture_sink(itemsize=self.itemsize, chunksize = self.chunksize, capture_dir="/tmp", mongodb_port=MONGODB_PORT, event_url="https://" + msodHost + ":" + str(443)  + "/eventstream/postCaptureEvent",time_offset = 0)
+	self.tb.connect(self.throttle,self.capture_sink)
 
     def tearDown (self):
         self.tb = None
@@ -81,8 +96,8 @@ class qa_capture_sink (gr_unittest.TestCase):
     def test_001_t (self):
 	print "test_001_t"
 	initialCount = 0
-	self.sqr.set_data_message(generate_data_message())
-	self.sqr.start_capture()
+	self.capture_sink.set_event_message(generate_data_message())
+	self.capture_sink.start_capture()
         self.tb.run ()
 	size = 0
 	count = 0
@@ -103,7 +118,7 @@ class qa_capture_sink (gr_unittest.TestCase):
 	
 
     def test_002_t (self):
-	self.sqr.stop_capture()
+	self.capture_sink.stop_capture()
         self.tb.run ()
 	for file in os.listdir("/tmp"):
     		if file.startswith("capture"):

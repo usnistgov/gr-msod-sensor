@@ -106,6 +106,7 @@ class my_top_block(gr.top_block):
     	self.loc_msg = self.read_json_from_file('sensor.loc')
     	self.sys_msg = self.read_json_from_file('sensor.sys')
     	self.data_msg = self.read_json_from_file('sensor.data')
+        self.event_msg = self.read_json_from_file('sensor.event')
     	ts = long(round(getLocalUtcTimeStamp()))
     	self.loc_msg['t'] = ts
     	self.loc_msg['SensorID'] = self.sensorId
@@ -121,6 +122,13 @@ class my_top_block(gr.top_block):
     	self.data_msg['mPar']['Atten'] = self.atten
     	self.data_msg['mPar']['n'] = self.num_ch
     	self.data_msg['mPar']['tm'] = self.meas_duration
+	
+    	self.event_msg['SensorID'] = self.sensorId
+    	self.event_msg['mPar']['fStart'] = self.start_freq
+    	self.event_msg['mPar']['fStop'] = self.stop_freq
+    	self.event_msg['mPar']['Atten'] = self.atten
+    	self.event_msg['mPar']['n'] = self.num_ch
+    	self.event_msg['mPar']['samp_rate'] = self.samp_rate
 
     def __init__(self):
         gr.top_block.__init__(self)
@@ -287,7 +295,7 @@ class my_top_block(gr.top_block):
 		event_url="https://" + self.dest_host + ":" + str(443) +  "/eventstream/postCaptureEvent", time_offset = delta)
 	
 	self.initialize_message_headers()
-	capture_sink.set_data_message(str(json.dumps(self.data_msg)))
+	capture_sink.set_event_message(str(json.dumps(self.event_msg)))
 	trigger = myblocks.dummy_capture_trigger(itemsize=gr.sizeof_gr_complex)
 	# Note: pass the trigger here so the trigger can be armed.
 	self.sslsocket_sink = myblocks.sslsocket_sink(numpy.int8, self.num_ch,self.dest_host,self.port,self.sys_msg,self.loc_msg,self.data_msg,capture_sink,trigger,self,os.getpid())

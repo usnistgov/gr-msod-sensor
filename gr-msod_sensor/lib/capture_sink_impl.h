@@ -27,6 +27,8 @@
 #include <pmt/pmt.h>
 #include <fstream>
 #include <vector>
+#include <boost/interprocess/anonymous_shared_memory.hpp>
+#include <boost/interprocess/mapped_region.hpp>
 
 
 namespace gr {
@@ -42,11 +44,11 @@ namespace gr {
       char*  d_websocket_url; 
       size_t d_chunksize;
       long   d_itemcount;
-      bool   d_start_capture;
+      boost::interprocess::mapped_region  * d_start_capture;
       long   d_capture_freq;
       char** d_capture_buffer;
       char*  d_event_url;
-      mongo::BSONObj d_data_message;
+      mongo::BSONObj d_event_message;
       std::ofstream d_logfile;
       std::string* d_current_capture_file;
       mongo::DBClientConnection d_mongo_client;
@@ -71,7 +73,7 @@ namespace gr {
          gr_vector_void_star &output_items);
 	
       // set the sensor id (for posting to the database).
-      void set_data_message(char* data_message);
+      void set_event_message(char* event_message);
 
       // start capture (only for testing).
       void start_capture();

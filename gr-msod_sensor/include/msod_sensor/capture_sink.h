@@ -61,7 +61,7 @@ namespace gr {
       /*!
        * \brief set the data message
        */
-      virtual void set_data_message(char* data_message) = 0;
+      virtual void set_event_message(char* event_message) = 0;
 
     };
 
