@@ -84,7 +84,6 @@ capture_sink_impl::capture_sink_impl(size_t itemsize, size_t chunksize, char* ca
     d_current_capture_file = NULL;
     d_capture_buffer = new char*[chunksize];
     memset(d_capture_buffer,0,sizeof(d_capture_buffer));
-    generate_timestamp();
     memset(d_start_capture->get_address(), 0, d_start_capture->get_size());
     d_event_url = new char[strlen(event_url) + 1];
     strcpy(d_event_url,event_url);
@@ -114,7 +113,7 @@ capture_sink_impl::~capture_sink_impl()
 /*
 * Generate a file name (timestamped).
 */
-void capture_sink_impl::generate_timestamp() {
+time_t capture_sink_impl::generate_timestamp() {
     GR_LOG_DEBUG(d_debug_logger,"capture_sink_impl::generate_timestamp ");
     time_t  timev;
     time(&timev);
@@ -141,6 +140,7 @@ void capture_sink_impl::generate_timestamp() {
         delete d_current_capture_file;
     }
     d_current_capture_file =  dirname;
+    return timev;
 }
 
 void
@@ -193,7 +193,7 @@ capture_sink_impl::set_event_message(char* event_message) {
 bool
 capture_sink_impl::dump_buffer() {
     int buffercounter = 0;
-    generate_timestamp();
+    time_t ts = generate_timestamp();
     GR_LOG_ERROR(d_debug_logger,"capture_sink_impl::dump_buffer: logging to  : " + *d_current_capture_file );
     assert(d_itemcount == d_chunksize);
     int fd = open(d_current_capture_file->c_str(), O_RDWR | O_CREAT, S_IWUSR | S_IRUSR);
@@ -215,15 +215,13 @@ capture_sink_impl::dump_buffer() {
     }
     close(fd);
     GR_LOG_DEBUG(d_debug_logger,"capture_sink_impl::dump_buffer: wrote " + std::to_string(count) + " elements to file : " + *d_current_capture_file);
-    time_t  timev;
-    time(&timev);
-    long universal_timestamp = (long) timev + d_time_offset;
+    time_t universal_timestamp = ts + d_time_offset;
 
     mongo::BSONObjBuilder builder;
     builder.appendElements(d_event_message);
     mongo::BSONObj data_message = builder.append("_capture_file",*d_current_capture_file)
-                                  .append("t",std::to_string(universal_timestamp))
-                                  .append("sample_count",std::to_string(d_itemcount))
+                                  .appendNumber("t",(long long) universal_timestamp)
+                                  .appendNumber("sample_count",(long long) d_itemcount)
                                   .obj();
 
 

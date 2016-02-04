@@ -290,6 +290,7 @@ class my_top_block(gr.top_block):
 
 	
         delta = long(round(getLocalUtcTimeStamp() - time.time()))
+	print "delta = ",delta
 
         capture_sink = myblocks.capture_sink(itemsize=gr.sizeof_gr_complex, chunksize = 500, capture_dir="/tmp", mongodb_port=self.mongodb_port,\
 		event_url="https://" + self.dest_host + ":" + str(443) +  "/eventstream/postCaptureEvent", time_offset = delta)
@@ -372,6 +373,7 @@ def start_main_loop():
     time.sleep(3)
     global tb
     signal.signal(signal.SIGUSR1,sigusr1_handler)
+    signal.signal(signal.SIGUSR2,sigusr2_handler)
     tb = my_top_block()
     try:
         main_loop(tb)
@@ -379,6 +381,12 @@ def start_main_loop():
 	pass
 
        
+def sigusr2_handler(signo,frame):
+	print "<<<<<<<<< got a signal " + str(signo) 
+	tb.stop()
+	tb.disconnect()
+	sys.exit(0)
+	os._exit(0)
 
 def sigusr1_handler(signo,frame):
 	print "<<<<<<<<< got a signal " + str(signo) 
@@ -388,6 +396,7 @@ def sigusr1_handler(signo,frame):
 	invocation = ['python'] + sys.argv
 	print "args "  + str( invocation ) 
 	subprocess.call(invocation)
+	sys.exit(0)
 	os._exit(0)
 
 

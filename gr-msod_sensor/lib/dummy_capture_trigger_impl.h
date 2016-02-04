@@ -22,6 +22,8 @@
 #define INCLUDED_MSOD_SENSOR_DUMMY_CAPTURE_TRIGGER_IMPL_H
 
 #include <msod_sensor/dummy_capture_trigger.h>
+#include <boost/interprocess/anonymous_shared_memory.hpp>
+#include <boost/interprocess/mapped_region.hpp>
 
 namespace gr {
   namespace msod_sensor {
@@ -31,7 +33,7 @@ namespace gr {
      private:
 	int d_itemcount;
 	int d_itemsize;
-	volatile bool d_armed;
+        boost::interprocess::mapped_region  * d_armed;
 	
      public:
       dummy_capture_trigger_impl(size_t itemsize);
@@ -47,6 +49,8 @@ namespace gr {
       void arm();
 
       void disarm();
+	
+      bool is_armed();
 
     };
 

@@ -48,7 +48,8 @@ dummy_capture_trigger_impl::dummy_capture_trigger_impl(size_t itemsize)
 {
     this->d_itemcount = 0;
     this->d_itemsize = itemsize;
-    this->d_armed = false;
+    this->d_armed = new boost::interprocess::mapped_region(boost::interprocess::anonymous_shared_memory(sizeof(int)));
+    memset(d_armed->get_address(), 0, d_armed->get_size());
     message_port_register_out(pmt::mp("trigger"));
 #ifdef IQCAPTURE_DEBUG
     prefs *p = prefs::singleton();
@@ -74,16 +75,23 @@ dummy_capture_trigger_impl::forecast (int noutput_items, gr_vector_int &ninput_i
          ninput_items_required[0] = noutput_items;
 }
 
+bool
+dummy_capture_trigger_impl::is_armed() {
+    int armed;
+    memcpy(&armed,this->d_armed->get_address(),sizeof(int));
+    return armed;
+}
+
 void
 dummy_capture_trigger_impl::arm() {
-	this->d_armed = true;
-        GR_LOG_DEBUG(d_debug_logger,"dummy_capture_trigger::arm " + std::to_string((long) this ) + " arm_flag " + std::to_string(this->d_armed));
+        memset(d_armed->get_address(), 1, sizeof(int));
+        GR_LOG_DEBUG(d_debug_logger,"dummy_capture_trigger::arm " + std::to_string((long) this ) + " arm_flag " + std::to_string(this->is_armed()));
 }
 
 void
 dummy_capture_trigger_impl::disarm() {
         GR_LOG_DEBUG(d_debug_logger,"dummy_capture_trigger::disarm " );
-	this->d_armed = false;
+        memset(d_armed->get_address(), 0, sizeof(int));
 }
 
 
@@ -101,10 +109,10 @@ dummy_capture_trigger_impl::general_work (int noutput_items,
     this->d_itemcount = this->d_itemcount + noutput_items;
     
     // Just signal the capture block (TODO -- different policies go here).
-    if (this->d_armed) {
+    if (this->is_armed()) {
        	GR_LOG_DEBUG(d_debug_logger,"dummy_capture_trigger::work pub" );
        	message_port_pub(pmt::mp("trigger"),pmt::intern(std::string("start")));
-	this->d_armed = false;
+	this->disarm();
     }
 
     in = (char*)input_items[0];

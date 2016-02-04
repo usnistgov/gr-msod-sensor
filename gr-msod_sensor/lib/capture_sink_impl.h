@@ -53,7 +53,7 @@ namespace gr {
       std::string* d_current_capture_file;
       mongo::DBClientConnection d_mongo_client;
 	
-      void generate_timestamp();
+      time_t generate_timestamp();
       // dump buffer
       bool dump_buffer();
 	
