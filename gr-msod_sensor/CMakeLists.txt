@@ -96,6 +96,7 @@ find_package(CppUnit)
 # find_package(Gnuradio "version")
 set(GR_REQUIRED_COMPONENTS RUNTIME)
 find_package(Gnuradio "3.7.2.1")
+find_package(CURL "7.46.0")
 
 if(NOT GNURADIO_RUNTIME_FOUND)
     message(FATAL_ERROR "GnuRadio Runtime required to compile msod_sensor")
@@ -103,6 +104,11 @@ endif()
 if(NOT CPPUNIT_FOUND)
     message(FATAL_ERROR "CppUnit required to compile msod_sensor")
 endif()
+
+if (NOT CURL_FOUND)
+    message(FATAL_ERROR "curl required to compile msod_sensor https://curl.haxx.se/download.html")
+endif()
+
 
 ########################################################################
 # Setup the include and linker paths
@@ -115,7 +121,7 @@ include_directories(
     ${Boost_INCLUDE_DIRS}
     ${CPPUNIT_INCLUDE_DIRS}
     ${MONGO_CLIENT_DIR}/include
-    ${LIBCURL_INSTALL_DIR}/include
+    ${CURL_INCLUDE_DIR}
 #    ${GNURADIO_RUNTIME_INCLUDE_DIRS}
     ${GNURADIO_ALL_INCLUDE_DIRS}
 )
@@ -125,7 +131,7 @@ link_directories(
     ${CPPUNIT_LIBRARY_DIRS}
     ${GNURADIO_RUNTIME_LIBRARY_DIRS}
     ${MONGO_CLIENT_DIR}/lib
-    ${LIBCURL_INSTALL_DIR}/lib
+    ${CURL_LIBRARY}
 )
 
 
