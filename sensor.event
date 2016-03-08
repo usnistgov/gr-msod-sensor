@@ -1,0 +1,15 @@
+{"a": 1, 
+"Ver": "1.0.12", 
+"Sys2Detect": "LTE", 
+"SensorKey": "NaN", 
+"SensorID": "E6R16W5XS", 
+"mPar": {"fStart": 703970000, "fStop": 714050000, "sampRate":10e6}, 
+"Type": "Event", 
+"ByteOrder": "N/A", 
+"Comment": "Capture event", 
+"OL": "NaN", 
+"DataType": "Binary - int8",
+"Sensitivity": "Low", 
+"mType": "IQ-Raw", 
+"t": 1432171042 
+}
