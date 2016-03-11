@@ -1,4 +1,4 @@
-#
+
 # Copyright 2005,2007,2011 Free Software Foundation, Inc.
 #
 # This file is part of GNU Radio
@@ -24,6 +24,7 @@ from gnuradio import blocks
 from gnuradio import filter
 from gnuradio import fft
 from gnuradio import uhd
+import osmosdr
 from gnuradio.eng_option import eng_option
 from optparse import OptionParser
 import sys
@@ -46,7 +47,12 @@ from multiprocessing import Process
 
 import argparse
 import requests
-import unittest
+from gnuradio.wxgui import stdgui2, form, slider
+from gnuradio.wxgui import forms
+from gnuradio.wxgui import fftsink2, waterfallsink2, scopesink2
+import wx
+
+
 
 
 def getLocalUtcTimeStamp():
@@ -72,7 +78,7 @@ class ThreadClass(threading.Thread):
     def run(self):
         return
 
-class my_top_block(gr.top_block):
+class my_top_block(stdgui2.std_top_block):
 
 
     def read_configuration(self):
@@ -130,8 +136,8 @@ class my_top_block(gr.top_block):
     	self.event_msg['mPar']['n'] = self.num_ch
     	self.event_msg['mPar']['samp_rate'] = self.samp_rate
 
-    def __init__(self):
-        gr.top_block.__init__(self)
+    def __init__(self, frame, panel, vbox, argv):
+        stdgui2.std_top_block.__init__(self, frame, panel, vbox, argv)
 
 
         usage = "usage: %prog [options]" #center_freq band_width"
@@ -165,14 +171,33 @@ class my_top_block(gr.top_block):
         parser.add_option("", "--skip-DC", action="store_true", default=False,
                           help="skip the DC bin when mapping channels")
 	parser.add_option("-S","--sensorId", type = "string", default = None, help="Sensor ID -- default will use serial number of sensor")
-	parser.add_option("-m","--mongod_port", type = "int", default = 2017, help="Mongodb port")
+	parser.add_option("-m","--mongod-port", type = "int", default = 2017, help="Mongodb port")
+        parser.add_option("", "--avg-alpha", type="eng_float", default=1e-1,
+                          help="Set fftsink averaging factor, default=[%default]")
+	parser.add_option("-u","--use-usrp", dest="use_usrp", action="store_false",  help = "Use usrp")
+        parser.add_option("", "--fft-rate", type="int", default=30,
+                          help="Set FFT update rate, [default=%default]")
+        parser.add_option("", "--waterfall", action="store_true", default=False,
+                          help="Enable waterfall display")
+        parser.add_option("", "--fosphor", action="store_true", default=False,
+                          help="Enable fosphor display")
+        parser.add_option("", "--oscilloscope", action="store_true", default=False,
+                          help="Enable oscilloscope display")
+        parser.add_option("", "--ref-scale", type="eng_float", default=1.0,
+                          help="Set dBFS=0dB input value, default=[%default]")
+        parser.add_option("", "--impedance", type="eng_float", default=50.0,
+                          help="Set dBFS=0dB input value, default=[%default]")
+
+
+
 
         (options, args) = parser.parse_args()
         if len(args) != 0:
             #parser.print_help()
             print "Please do not add Center Frequency or bandwidth (previously required values).  They are read from the server and values here are not used."
             sys.exit(1)
-	
+
+	self.frame = frame
 	self.dest_host = options.dest_host
 	self.samp_rate = options.samp_rate
         self.fft_size = options.fft_size
@@ -193,43 +218,93 @@ class my_top_block(gr.top_block):
                 realtime = False
                 print "Note: failed to enable realtime scheduling"
 
-	# build graph
-        self.u = uhd.usrp_source(device_addr=options.args,
-                                 stream_args=uhd.stream_args('fc32'))
+	if options.fosphor:
+            from gnuradio import fosphor
+            self.scope = fosphor.wx_sink_c(panel, size=(800,300))
+            self.scope.set_sample_rate(input_rate)
+            self.frame.SetMinSize((800,600))
+        elif options.waterfall:
+            self.scope = waterfallsink2.waterfall_sink_c (panel,
+                                                          fft_size=options.fft_size,
+                                                          sample_rate=options.samp_rate,
+                                                          ref_scale=options.ref_scale,
+                                                          ref_level=20.0,
+                                                          y_divs = 12)
 
-        # Set the subdevice spec
-        if(options.spec):
-            self.u.set_subdev_spec(options.spec, 0)
+            self.frame.SetMinSize((800, 420))
+        elif options.oscilloscope:
+            self.scope = scopesink2.scope_sink_c(panel, sample_rate=input_rate)
+            self.frame.SetMinSize((800, 600))
+        else:
+            self.scope = fftsink2.fft_sink_c (panel,
+                                              fft_size=options.fft_size,
+                                              sample_rate=options.samp_rate,
+                                              ref_scale=options.ref_scale,
+                                              ref_level=20.0,
+                                              y_divs = 12,
+                                              average= self.det_type == 'avg' ,
+                                              peak_hold= self.det_type == 'peak',
+                                              avg_alpha=options.avg_alpha,
+                                              fft_rate=options.fft_rate)
+            self.frame.SetMinSize((800,600))
+
+        if hasattr(self.scope, 'set_sample_rate'):
+            self.scope.set_sample_rate(options.samp_rate)
+
+
+
+	# build graph.. TODO -- cut over to OSMO SDR and get rid of USRP
+	self.use_usrp = options.use_usrp
+	#self.u =  osmosdr.source( args="numchan=" + str(1) + " " + "bladerf=0" )
+	self.u =  osmosdr.source( args=options.args )
+       	self.u.set_sample_rate(self.samp_rate)
+       	self.u.set_freq_corr(0, 0)
+       	self.u.set_dc_offset_mode(1, 0)
+	self.u.set_dc_offset(1,1)
+       	self.u.set_iq_balance_mode(2, 0)
+       	self.u.set_gain_mode(True, 0)
+       	self.u.set_gain(0, 0)
+       	#self.u.set_if_gain(15, 0)
+       	self.u.set_bb_gain(7, 0)
+
+        try:
+           self.u.get_sample_rates().start()
+        except RuntimeError:
+           print "Source has no sample rates (wrong device arguments?)."
+           sys.exit(1)
+
+
+        
+        usrp_rate = self.u.get_sample_rate()
+        if usrp_rate != options.samp_rate:
+	      if usrp_rate < options.samp_rate:
+	         # create list of allowable rates
+	         samp_rates = self.u.get_sample_rates()
+	         rate_list = [0.0]*len(samp_rates)
+	         for i in range(len(rate_list)):
+		    last_rate = samp_rates.pop()
+		    rate_list[len(rate_list) - 1 - i] = last_rate.start()
+		 # choose next higher rate
+		 rate_ind = rate_list.index(usrp_rate) + 1
+		 if rate_ind < len(rate_list):
+		    self.u.set_samp_rate(rate_list[rate_ind])
+		    usrp_rate = self.u.get_sample_rate()
+		 print "New actual sample rate =", usrp_rate/1e6, "MHz"
+	      resamp = filter.fractional_resampler_cc(0.0, usrp_rate / options.samp_rate)
+
+	print "sample rate " , usrp_rate
 
         # Set the antenna
         if(options.antenna):
-            self.u.set_antenna(options.antenna, 0)
-        
-        self.u.set_samp_rate(options.samp_rate)
-        usrp_rate = self.u.get_samp_rate()
-
-	if usrp_rate != options.samp_rate:
-	    if usrp_rate < options.samp_rate:
-	        # create list of allowable rates
-	        samp_rates = self.u.get_samp_rates()
-	        rate_list = [0.0]*len(samp_rates)
-	        for i in range(len(rate_list)):
-		    last_rate = samp_rates.pop()
-		    rate_list[len(rate_list) - 1 - i] = last_rate.start()
-		# choose next higher rate
-		rate_ind = rate_list.index(usrp_rate) + 1
-		if rate_ind < len(rate_list):
-		    self.u.set_samp_rate(rate_list[rate_ind])
-		    usrp_rate = self.u.get_samp_rate()
-		print "New actual sample rate =", usrp_rate/1e6, "MHz"
-	    resamp = filter.fractional_resampler_cc(0.0, usrp_rate / options.samp_rate)
-
-        
-	if(options.lo_offset):
+            self.u.set_antenna(options.antenna)
+         
+	if(options.use_usrp and options.lo_offset):
             self.lo_offset = options.lo_offset
-	else:
+	elif options.use_usrp:
 	    self.lo_offset = usrp_rate / 2.0
 	    print "LO offset set to", self.lo_offset/1e6, "MHz"
+	else:
+	    self.lo_offset = 0
 
         
         s2v = blocks.stream_to_vector(gr.sizeof_gr_complex, self.fft_size)
@@ -272,11 +347,12 @@ class my_top_block(gr.top_block):
 
 	# Divide magnitude-square by a constant to obtain power
 	# in Watts.  Assumes unit of USRP source is volts.
-	impedance = 50.0   # ohms
+	impedance = options.impedance   # ohms
+	#impedance = 50.0   # ohms
 	Vsq2W_dB = -10.0 * math.log10(self.fft_size * window_power * impedance)
 
 	# Convert from Watts to dBm.
-	W2dBm = blocks.nlog10_ff(10.0, self.num_ch, 30.0 + Vsq2W_dB)
+	W2dBm = blocks.nlog10_ff(10, self.num_ch, 30 + Vsq2W_dB)
 
 	f2c = blocks.float_to_char(self.num_ch, 1.0)
         g = self.u.get_gain_range()
@@ -284,9 +360,11 @@ class my_top_block(gr.top_block):
             # if no gain was specified, use the mid-point in dB
             options.gain = float(g.start()+g.stop())/2.0
 
-        self.set_gain(options.gain)
+	# TODO -- fix
+        #self.set_gain(options.gain)
         print "gain =", options.gain, "dB in range (%0.1f dB, %0.1f dB)" % (float(g.start()), float(g.stop()))
 	self.atten = float(g.stop()) - options.gain
+	self.set_gain(options.gain)
 
 	
         delta = long(round(getLocalUtcTimeStamp() - time.time()))
@@ -311,6 +389,7 @@ class my_top_block(gr.top_block):
 	# Second pipeline to the sink.
 	self.connect(self.u,trigger,capture_sink)
 	self.msg_connect(trigger,"trigger",capture_sink,"capture")
+	self.connect(self.u,self.scope)
 
     def disconnect(self):
 	self.sslsocket_sink.disconnect()
@@ -324,11 +403,16 @@ class my_top_block(gr.top_block):
         @rypte: bool
         """
         
-        r = self.u.set_center_freq(uhd.tune_request(target_freq, rf_freq=(target_freq + self.lo_offset),rf_freq_policy=uhd.tune_request.POLICY_MANUAL))
-        if r:
-            return True
+	self.u.set_center_freq(target_freq + self.lo_offset)
+	freq = self.u.get_center_freq()
+        if hasattr(self.scope, 'set_baseband_freq'):
+            self.scope.set_baseband_freq(freq)
 
-        return False
+        if freq == target_freq:
+	   return True
+	else:
+	   return False
+
 
     def set_gain(self, gain):
         self.u.set_gain(gain)
@@ -374,9 +458,11 @@ def start_main_loop():
     global tb
     signal.signal(signal.SIGUSR1,sigusr1_handler)
     signal.signal(signal.SIGUSR2,sigusr2_handler)
-    tb = my_top_block()
+    app = stdgui2.stdapp(my_top_block, "osmocom Spectrum Browser", nstatus=1)
+    #tb = my_top_block()
     try:
-        main_loop(tb)
+        app.MainLoop()
+        #main_loop(tb)
     except KeyboardInterrupt:
 	pass
 

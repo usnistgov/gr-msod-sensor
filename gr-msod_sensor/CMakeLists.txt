@@ -97,6 +97,7 @@ find_package(CppUnit)
 set(GR_REQUIRED_COMPONENTS RUNTIME)
 find_package(Gnuradio "3.7.2.1")
 find_package(CURL "7.46.0")
+find_package(MongoClient)
 
 if(NOT GNURADIO_RUNTIME_FOUND)
     message(FATAL_ERROR "GnuRadio Runtime required to compile msod_sensor")
@@ -130,7 +131,7 @@ link_directories(
     ${Boost_LIBRARY_DIRS}
     ${CPPUNIT_LIBRARY_DIRS}
     ${GNURADIO_RUNTIME_LIBRARY_DIRS}
-    ${MONGO_CLIENT_DIR}/lib
+    ${MONGO_CLIENT_LIBRARY}
     ${CURL_LIBRARY}
 )
 
