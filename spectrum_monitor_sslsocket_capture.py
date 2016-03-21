@@ -46,8 +46,14 @@ from multiprocessing import Process
 
 import argparse
 import requests
-import unittest
+import urllib3
 
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.poolmanager import PoolManager
+
+#import urllib3.contrib.pyopenssl
+
+#urllib3.contrib.pyopenssl.inject_into_urllib3()
 
 def getLocalUtcTimeStamp():
     t = time.mktime(time.gmtime())
@@ -72,14 +78,22 @@ class ThreadClass(threading.Thread):
     def run(self):
         return
 
+
+class MyAdapter(HTTPAdapter):
+    def init_poolmanager(self, connections, maxsize, block=False):
+        self.poolmanager = PoolManager(num_pools=connections,
+                                       maxsize=maxsize,
+                                       block=block,
+                                       ssl_version=ssl.PROTOCOL_SSLv3)
+
 class my_top_block(gr.top_block):
 
 
     def read_configuration(self):
     	print 'host:',self.dest_host
     	sensor_id= self.sensorId
-    	r = requests.post('https://'+self.dest_host+':443/sensordata/getStreamingPort/'+sensor_id, verify=False)
     	print 'Requestion port on:'+ 'https://'+self.dest_host+':443/sensordata/getStreamingPort/'+sensor_id 
+    	r = requests.post('https://'+self.dest_host+':443/sensordata/getStreamingPort/'+sensor_id, verify=False)
     	print 'server response:', r.text
     	json = r.json()
     	port = json["port"]
@@ -93,6 +107,7 @@ class my_top_block(gr.top_block):
 
 	#Reads in min & max frequency
 	activeBands = json["sensorConfig"]["thresholds"]
+	self.meas_interval = json["sensorConfig"]["streaming"]["streamingSecondsPerFrame"]
 	for band in activeBands.values():
 		if band["active"]:
 			self.start_freq = band["minFreqHz"]
@@ -121,7 +136,8 @@ class my_top_block(gr.top_block):
     	self.data_msg['mPar']['fStop'] = self.stop_freq
     	self.data_msg['mPar']['Atten'] = self.atten
     	self.data_msg['mPar']['n'] = self.num_ch
-    	self.data_msg['mPar']['tm'] = self.meas_duration
+    	#self.data_msg['mPar']['tm'] = self.meas_duration
+    	self.data_msg['mPar']['tm'] = self.meas_interval
 	
     	self.event_msg['SensorID'] = self.sensorId
     	self.event_msg['mPar']['fStart'] = self.start_freq
@@ -131,6 +147,8 @@ class my_top_block(gr.top_block):
     	self.event_msg['mPar']['samp_rate'] = self.samp_rate
 
     def __init__(self):
+        self.session = requests.Session()
+        self.session.mount('https://', MyAdapter())
         gr.top_block.__init__(self)
 
 
@@ -146,9 +164,6 @@ class my_top_block(gr.top_block):
                           help="set sample rate [default=%default]")
         parser.add_option("-g", "--gain", type="eng_float", default=None,
                           help="set gain in dB (default is midpoint)")
-        parser.add_option("", "--meas-interval", type="eng_float",
-                          default=0.1, metavar="SECS",
-                          help="interval over which to measure statistic (in seconds) [default=%default]")
     	parser.add_option("-t", "--det-type", type="string", default="avg",
                           help="set detection type ('avg' or 'peak') [default=%default]")
         parser.add_option("-c", "--number-channels", type="int", default=100, 
@@ -262,7 +277,7 @@ class my_top_block(gr.top_block):
 
 	self.aggr = myblocks.bin_aggregator_ff(self.fft_size, self.num_ch, self.bin2ch_map)
 
-        meas_frames = max(1, int(round(options.meas_interval * self.samp_rate / self.fft_size))) # in fft_frames
+        meas_frames = max(1, int(round(self.meas_interval * self.samp_rate / self.fft_size))) # in fft_frames
 	self.meas_duration = meas_frames * self.fft_size / self.samp_rate
 	print "Actual measurement duration =", self.meas_duration, "s"
 
