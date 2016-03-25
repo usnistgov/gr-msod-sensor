@@ -115,6 +115,12 @@ def parse_options():
 	parser.add_option("-u","--use-usrp", dest="use_usrp", action="store_false",  help = "Use usrp")
         parser.add_option("", "--fft-rate", type="int", default=30,
                           help="Set FFT update rate, [default=%default]")
+        parser.add_option("", "--waterfall", action="store_true", default=False,
+                          help="Enable waterfall display")
+        parser.add_option("", "--fosphor", action="store_true", default=False,
+                          help="Enable fosphor display")
+        parser.add_option("", "--oscilloscope", action="store_true", default=False,
+                          help="Enable oscilloscope display")
         parser.add_option("", "--ref-scale", type="eng_float", default=1.0,
                           help="Set dBFS=0dB input value, default=[%default]")
         parser.add_option("", "--impedance", type="eng_float", default=50.0,
@@ -132,7 +138,7 @@ def init_osmosdr(options):
 	u.set_dc_offset(1,1)
        	u.set_iq_balance_mode(2, 0)
        	u.set_gain_mode(True, 0)
-       	u.set_gain(3, 0)
+       	u.set_gain(6, 0)
        	u.set_if_gain(15, 0)
        	u.set_bb_gain(7, 0)
         try:
@@ -150,8 +156,7 @@ class MyAdapter(HTTPAdapter):
                                        block=block,
                                        ssl_version=ssl.PROTOCOL_SSLv3)
 
-#class my_top_block(stdgui2.std_top_block):
-class my_top_block(gr.top_block):
+class my_top_block(stdgui2.std_top_block):
     def read_configuration(self):
     	print 'host:',self.dest_host
     	sensor_id= self.sensorId
@@ -222,6 +227,38 @@ class my_top_block(gr.top_block):
             else:
                 realtime = False
                 print "Note: failed to enable realtime scheduling"
+
+	if options.fosphor:
+            from gnuradio import fosphor
+            self.scope = fosphor.wx_sink_c(self.panel, size=(800,300))
+            self.scope.set_sample_rate(input_rate)
+            self.frame.SetMinSize((800,600))
+        elif options.waterfall:
+            self.scope = waterfallsink2.waterfall_sink_c (self.panel,
+                                                          fft_size=options.fft_size,
+                                                          sample_rate=options.samp_rate,
+                                                          ref_scale=options.ref_scale,
+                                                          ref_level=20.0,
+                                                          y_divs = 12)
+            self.frame.SetMinSize((800, 420))
+        elif options.oscilloscope:
+            self.scope = scopesink2.scope_sink_c(self.panel, sample_rate=input_rate)
+            self.frame.SetMinSize((800, 600))
+        else:
+            self.scope = fftsink2.fft_sink_c (self.panel,
+                                              fft_size=options.fft_size,
+                                              sample_rate=options.samp_rate,
+                                              ref_scale=options.ref_scale,
+                                              ref_level=20.0,
+                                              y_divs = 12,
+                                              average= self.det_type == 'avg' ,
+                                              peak_hold= self.det_type == 'peak',
+                                              avg_alpha=options.avg_alpha,
+                                              fft_rate=options.fft_rate)
+            self.frame.SetMinSize((800,600))
+        if hasattr(self.scope, 'set_sample_rate'):
+            self.scope.set_sample_rate(options.samp_rate)
+
 
 
 	# build graph.. TODO -- cut over to OSMO SDR and get rid of USRP
@@ -346,9 +383,14 @@ class my_top_block(gr.top_block):
 	self.connect(self.u,trigger,capture_sink)
 	self.flow_graph_2 = [trigger,capture_sink]
 	self.msg_connect(trigger,"trigger",capture_sink,"capture")
+	self.connect(self.u,self.scope)
 
 
-    def __init__(self,osmo,options,args):
+    def __init__(self,frame, panel, vbox, argv):
+        global osmo
+        global options
+        global args
+        stdgui2.std_top_block.__init__(self, frame, panel, vbox, argv)
 	print "osmo = ",osmo
         self.session = requests.Session()
         self.session.mount('https://', MyAdapter())
@@ -357,11 +399,14 @@ class my_top_block(gr.top_block):
 	self.flow_graph_2 = None
 	self.options = options
 	self.u = osmo
+        self.frame = frame
+        self.panel = panel
 
         if len(args) != 0:
             #parser.print_help()
-            print "Warning: args present but ignored"
+            print "Please do not add Center Frequency or bandwidth (previously required values).  They are read from the server and values here are not used."
             sys.exit(1)
+	#self.frame = frame
 	self.dest_host = options.dest_host
 	self.samp_rate = options.samp_rate
         self.fft_size = options.fft_size
@@ -408,6 +453,8 @@ class my_top_block(gr.top_block):
         
 	self.u.set_center_freq(target_freq + self.lo_offset)
 	freq = self.u.get_center_freq()
+        #if hasattr(self.scope, 'set_baseband_freq'):
+        #    self.scope.set_baseband_freq(freq)
 
         if freq == target_freq:
 	   return True
@@ -465,6 +512,27 @@ def start_main_loop():
           main_loop(tb)
        except KeyboardInterrupt:
 	   pass
+
+def start_main_loop_gui():
+    time.sleep(3)
+    global tb,osmo,options,args
+    signal.signal(signal.SIGUSR1,sigusr1_handler)
+    signal.signal(signal.SIGUSR2,sigusr2_handler)
+    options,args = parse_options()
+
+    osmo = init_osmosdr(options)
+    while True:
+       tb  = stdgui2.stdapp(my_top_block, "osmocom Spectrum Browser", nstatus=1)
+       try:
+          app.MainLoop()
+       except KeyboardInterrupt:
+	   pass
+    #app = stdgui2.stdapp(my_top_block, "osmocom Spectrum Browser", nstatus=1)
+    #try:
+    #   app.MainLoop()
+    #except KeyboardInterrupt:
+    #   pass
+
        
 def sigusr2_handler(signo,frame):
 	print "<<<<<<<<< got a signal " + str(signo) 
@@ -478,13 +546,13 @@ def sigusr1_handler(signo,frame):
 	print "<<<<<<<<< got a signal " + str(signo) 
 	if "tb" in globals():
            global tb
-	   tb.stop()
+	   #tb.stop()
 	   tb.disconnect_me()
 
 
 	
 if __name__ == '__main__':
-    mychild = Process(target=start_main_loop)
+    mychild = Process(target=start_main_loop_gui)
     mychild.start()
     t = ThreadClass()
     t.start()
