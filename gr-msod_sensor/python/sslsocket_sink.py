@@ -50,13 +50,21 @@ def command_handler(capture_sink, trigger,sock,top_block,pid):
 				trigger.setTriggerParams(json.dumps(triggerParams))
 			elif commandJson["command"] == "disarm" :
 			   trigger.disarm()
+                        elif commandJson["command"] == "retune" :
+                           stringBandName = commandJson["bandName"]
 			else:
-			   os.kill(pid,signal.SIGUSR1)
+                           try:
+			      os.kill(pid,signal.SIGUSR1)
+                           except:
+                              print "Process not found ",str(pid)
 			   sys.exit(0)
 			   os._exit(0)
 		except:
 			traceback.print_exc()
-			os.kill(pid,signal.SIGUSR1)
+                        try:
+			   os.kill(pid,signal.SIGUSR1)
+                        except:
+                           print "Process not found ",str(pid)
 			sys.exit(0)
 			os._exit(0)
 	
