@@ -44,10 +44,6 @@ from multiprocessing import Process
 
 import argparse
 import requests
-from gnuradio.wxgui import stdgui2, form, slider
-from gnuradio.wxgui import forms
-from gnuradio.wxgui import fftsink2, waterfallsink2, scopesink2
-import wx
 
 
 import urllib3
@@ -448,12 +444,13 @@ def main_loop(tb):
     try:
       tb.start()
       tb.wait()
-      print "returned from wait"
+    except KeyboardInterrupt:
+        print "Keyboard interrupt"
+        raise
     except:
 	traceback.print_exc()
 
 def start_main_loop():
-    time.sleep(3)
     global tb
     signal.signal(signal.SIGUSR1,sigusr1_handler)
     signal.signal(signal.SIGUSR2,sigusr2_handler)
@@ -464,7 +461,11 @@ def start_main_loop():
        try:
           main_loop(tb)
        except KeyboardInterrupt:
-	   pass
+          sys.exit()
+          os._exit(0)
+          
+
+
        
 def sigusr2_handler(signo,frame):
 	print "<<<<<<<<< got a signal " + str(signo) 
@@ -484,9 +485,10 @@ def sigusr1_handler(signo,frame):
 
 	
 if __name__ == '__main__':
-    mychild = Process(target=start_main_loop)
-    mychild.start()
-    t = ThreadClass()
-    t.start()
+   start_main_loop()
+   # mychild = Process(target=start_main_loop)
+   # mychild.start()
+   # t = ThreadClass()
+   # t.start()
 
   
