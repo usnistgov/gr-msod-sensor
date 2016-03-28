@@ -50,8 +50,6 @@ def command_handler(capture_sink, trigger,sock,top_block,pid):
 				trigger.setTriggerParams(json.dumps(triggerParams))
 			elif commandJson["command"] == "disarm" :
 			   trigger.disarm()
-                        elif commandJson["command"] == "retune" :
-                           stringBandName = commandJson["bandName"]
 			else:
                            try:
 			      os.kill(pid,signal.SIGUSR1)
@@ -83,8 +81,7 @@ class sslsocket_sink(gr.sync_block):
 	self.port = port
    	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	self.unwrapped_socket = sock
-	sock.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER,                                                                                                                     
-                 struct.pack('ii', 1, 0))
+	sock.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER,struct.pack('ii', 1, 0))
   	sock.connect((self.host,self.port))
         self.sock =  ssl.wrap_socket(sock)
 	self.sys_msg = sys_msg
@@ -100,8 +97,7 @@ class sslsocket_sink(gr.sync_block):
 	self.sock.close()
    	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	self.unwrapped_socket = sock
-	sock.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER,                                                                                                                     
-                 struct.pack('ii', 1, 0))
+	sock.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER,struct.pack('ii', 1, 0))
   	sock.connect((self.host,self.port))
         self.sock =  ssl.wrap_socket(sock)
 	self.send_obj(self.sys_msg)

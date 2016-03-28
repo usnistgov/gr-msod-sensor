@@ -26,5 +26,6 @@ install(FILES
     msod_sensor_threshold_timestamp.xml
     msod_sensor_capture_sink.xml
     msod_sensor_iqcapture_sink.xml
-    msod_sensor_dummy_capture_trigger.xml DESTINATION share/gnuradio/grc/blocks
+    msod_sensor_dummy_capture_trigger.xml
+    msod_sensor_level_capture_trigger.xml DESTINATION share/gnuradio/grc/blocks
 )

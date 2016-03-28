@@ -146,7 +146,6 @@ class MyAdapter(HTTPAdapter):
                                        block=block,
                                        ssl_version=ssl.PROTOCOL_SSLv3)
 
-#class my_top_block(stdgui2.std_top_block):
 class my_top_block(gr.top_block):
     def read_configuration(self):
     	print 'host:',self.dest_host
@@ -160,7 +159,7 @@ class my_top_block(gr.top_block):
     	self.port = port
     	print 'Requestion port on:'+ 'https://'+self.dest_host+':443/sensordb/getSensorConfig/'+sensor_id
     	r = requests.post('https://'+self.dest_host+':443/sensordb/getSensorConfig/'+sensor_id, verify=False)
-    	print 'server response:', r.text
+    	#print 'server response:', r.text
     	json = r.json()
 
 
@@ -324,7 +323,8 @@ class my_top_block(gr.top_block):
 	
 	self.initialize_message_headers()
 	capture_sink.set_event_message(str(json.dumps(self.event_msg)))
-	trigger = myblocks.dummy_capture_trigger(itemsize=gr.sizeof_gr_complex)
+	
+	trigger = myblocks.level_capture_trigger(itemsize=gr.sizeof_gr_complex,level=25,window_size=1024)
 	# Note: pass the trigger here so the trigger can be armed.
 	self.sslsocket_sink = myblocks.sslsocket_sink(numpy.int8, self.num_ch,self.dest_host,self.port,self.sys_msg,self.loc_msg,self.data_msg,capture_sink,trigger,self,os.getpid())
 
@@ -475,6 +475,7 @@ def sigusr2_handler(signo,frame):
 	os._exit(0)
 
 def sigusr1_handler(signo,frame):
+	time.sleep(1)
         signal.signal(signal.SIGUSR1,sigusr1_handler)
 	print "<<<<<<<<< got a signal " + str(signo) 
 	if "tb" in globals():
