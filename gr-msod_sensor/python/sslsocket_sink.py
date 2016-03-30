@@ -55,6 +55,7 @@ def command_handler(capture_sink, trigger,sock,top_block,pid):
 			else:
                            try:
 			      os.kill(pid,signal.SIGUSR1)
+			      sock.close()
                            except:
                               print "Process not found ",str(pid)
 			   sys.exit(0)
@@ -86,7 +87,8 @@ class sslsocket_sink(gr.sync_block):
 	sock.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER,                                                                                                                     
                  struct.pack('ii', 1, 0))
   	sock.connect((self.host,self.port))
-        self.sock =  ssl.wrap_socket(sock)
+        #self.sock =  ssl.wrap_socket(sock)
+	self.sock =  ssl.wrap_socket(sock,ssl_version = ssl.PROTOCOL_SSLv3)
 	self.sys_msg = sys_msg
 	self.send_obj(sys_msg)
 	self.loc_msg = loc_msg

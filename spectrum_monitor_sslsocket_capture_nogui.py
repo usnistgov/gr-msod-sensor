@@ -86,7 +86,7 @@ def parse_options():
         usage = "usage: %prog [options]" #center_freq band_width"
         parser = OptionParser(option_class=eng_option, usage=usage)
         parser.add_option("-a", "--args", type="string", default="",
-                          help="UHD device device address args [default=%default]")
+                          help="Device address args [default=%default]")
         parser.add_option("", "--spec", type="string", default=None,
 	                  help="Subdevice of UHD device where appropriate")
         parser.add_option("-A", "--antenna", type="string", default=None,
@@ -112,7 +112,6 @@ def parse_options():
 	parser.add_option("-m","--mongod-port", type = "int", default = 2017, help="Mongodb port")
         parser.add_option("", "--avg-alpha", type="eng_float", default=1e-1,
                           help="Set fftsink averaging factor, default=[%default]")
-	parser.add_option("-u","--use-usrp", dest="use_usrp", action="store_false",  help = "Use usrp")
         parser.add_option("", "--fft-rate", type="int", default=30,
                           help="Set FFT update rate, [default=%default]")
         parser.add_option("", "--ref-scale", type="eng_float", default=1.0,
@@ -126,21 +125,26 @@ def parse_options():
 
 def init_osmosdr(options):
 	u =  osmosdr.source(args=options.args)
-       	u.set_sample_rate(options.samp_rate)
        	u.set_freq_corr(0, 0)
        	u.set_dc_offset_mode(1, 0)
-	u.set_dc_offset(1,1)
-       	u.set_iq_balance_mode(2, 0)
+	u.set_dc_offset(1,0)
+       	u.set_iq_balance_mode(0, 0)
        	u.set_gain_mode(True, 0)
-       	u.set_gain(3, 0)
+       	u.set_gain(6, 0)
        	u.set_if_gain(15, 0)
        	u.set_bb_gain(7, 0)
+        # Walk through the sample rates of the device and pick
+	for p in u.get_sample_rates():
+	    if p.start() >= options.samp_rate:
+		  u.set_sample_rate(float(p.start()))
+		  break
         try:
            u.get_sample_rates().start()
         except RuntimeError:
-	   traceback.print_exc()
+           traceback.print_exc()
            print "Source has no sample rates (wrong device arguments?)."
            sys.exit(1)
+	   os._exit(0)
 	return u
 
 class MyAdapter(HTTPAdapter):
@@ -157,17 +161,13 @@ class my_top_block(gr.top_block):
     	sensor_id= self.sensorId
     	print 'Requestion port on:'+ 'https://'+self.dest_host+':443/sensordata/getStreamingPort/'+sensor_id 
     	r = requests.post('https://'+self.dest_host+':443/sensordata/getStreamingPort/'+sensor_id, verify=False)
-    	print 'server response:', r.text
     	json = r.json()
     	port = json["port"]
     	print 'socket port =',port 
     	self.port = port
     	print 'Requestion port on:'+ 'https://'+self.dest_host+':443/sensordb/getSensorConfig/'+sensor_id
     	r = requests.post('https://'+self.dest_host+':443/sensordb/getSensorConfig/'+sensor_id, verify=False)
-    	print 'server response:', r.text
     	json = r.json()
-
-
 	#Reads in min & max frequency
 	activeBands = json["sensorConfig"]["thresholds"]
 	self.meas_interval = json["sensorConfig"]["streaming"]["streamingSecondsPerFrame"]
@@ -224,26 +224,14 @@ class my_top_block(gr.top_block):
                 print "Note: failed to enable realtime scheduling"
 
 
-	# build graph.. TODO -- cut over to OSMO SDR and get rid of USRP
-	self.use_usrp = self.options.use_usrp
+	self.use_usrp = self.options.args.startswith("uhd")
 
-        
+
         usrp_rate = self.u.get_sample_rate()
+        
         if usrp_rate != self.options.samp_rate:
-	      if usrp_rate < self.options.samp_rate:
-	         # create list of allowable rates
-	         samp_rates = self.u.get_sample_rates()
-	         rate_list = [0.0]*len(samp_rates)
-	         for i in range(len(rate_list)):
-		    last_rate = samp_rates.pop()
-		    rate_list[len(rate_list) - 1 - i] = last_rate.start()
-		 # choose next higher rate
-		 rate_ind = rate_list.index(usrp_rate) + 1
-		 if rate_ind < len(rate_list):
-		    self.u.set_samp_rate(rate_list[rate_ind])
-		    usrp_rate = self.u.get_sample_rate()
-		 print "New actual sample rate =", usrp_rate/1e6, "MHz"
-	      resamp = filter.fractional_resampler_cc(0.0, usrp_rate / self.options.samp_rate)
+           print "rate mismatch -- inserting fractional resampler"
+	   resamp = filter.fractional_resampler_cc(0.0, usrp_rate / self.options.samp_rate)
 
 	print "sample rate " , usrp_rate
 
@@ -251,9 +239,9 @@ class my_top_block(gr.top_block):
         if(self.options.antenna):
             self.u.set_antenna(self.options.antenna)
          
-	if(self.options.use_usrp and self.options.lo_offset):
+	if(self.use_usrp and self.options.lo_offset):
             self.lo_offset = self.options.lo_offset
-	elif self.options.use_usrp:
+	elif self.use_usrp:
 	    self.lo_offset = usrp_rate / 2.0
 	    print "LO offset set to", self.lo_offset/1e6, "MHz"
 	else:
@@ -271,6 +259,7 @@ class my_top_block(gr.top_block):
         #Calculate bandwidth & center frequency from start/stop values
 	self.bandwidth = self.stop_freq - self.start_freq
 	self.center_freq = self.start_freq + round(self.bandwidth/2)
+	print "self.center_freq ", self.center_freq
 
 	self.bin2ch_map = [0] * self.fft_size
         hz_per_bin = self.samp_rate / self.fft_size
@@ -350,6 +339,7 @@ class my_top_block(gr.top_block):
 
     def __init__(self,osmo,options,args):
 	print "osmo = ",osmo
+	print "options", options
         self.session = requests.Session()
         self.session.mount('https://', MyAdapter())
         gr.top_block.__init__(self)
@@ -357,6 +347,7 @@ class my_top_block(gr.top_block):
 	self.flow_graph_2 = None
 	self.options = options
 	self.u = osmo
+	print args
 
         if len(args) != 0:
             #parser.print_help()
@@ -371,6 +362,7 @@ class my_top_block(gr.top_block):
 	self.init_flow_graph()
 
     def disconnect_me(self):
+	print "disconnecting flow graph"
 	self.lock()
 	self.stop()
 	self.sslsocket_sink.disconnect()
@@ -382,10 +374,10 @@ class my_top_block(gr.top_block):
            sys.exit(1)
 	self.disconnect(self.u)
 	if self.flow_graph_1 != None:
-           print "flow_graph_1: " , str(self.flow_graph_1)
 	   apply(self.disconnect,tuple(self.flow_graph_1))
 	if self.flow_graph_2 != None:
 	   apply(self.disconnect,tuple(self.flow_graph_2))
+	print "done disconnecting flow graph"
 	self.unlock()
 
     def reconnect_me(self):
@@ -405,13 +397,18 @@ class my_top_block(gr.top_block):
             target_freq: frequency in Hz
         @rypte: bool
         """
+
+        print "set_freq:target_freq ", target_freq
         
-	self.u.set_center_freq(target_freq + self.lo_offset)
+	#self.u.set_center_freq(target_freq + self.lo_offset)
+	self.u.set_center_freq(target_freq - self.lo_offset)
 	freq = self.u.get_center_freq()
+	self.center_freq = freq
 
         if freq == target_freq:
 	   return True
 	else:
+           print "actual freq ", freq
 	   return False
 
 
@@ -441,7 +438,8 @@ def main_loop(tb):
     print 'starting main loop' 
     if not tb.set_freq(tb.center_freq):
         print "Failed to set frequency to", tb.center_freq
-        sys.exit(1)
+        #sys.exit(1)
+	#os._exit(0)
     print "Set frequency to", tb.center_freq/1e6, "MHz"
     time.sleep(0.25)
     # Start flow graph
@@ -460,11 +458,14 @@ def start_main_loop():
     options,args = parse_options()
     osmo = init_osmosdr(options)
     while True:
+       print "start_main_loop: starting main loop"
        tb = my_top_block(osmo,options,args)
        try:
           main_loop(tb)
        except KeyboardInterrupt:
 	   pass
+       except:
+           traceback.print_exc()
        
 def sigusr2_handler(signo,frame):
 	print "<<<<<<<<< got a signal " + str(signo) 
@@ -474,11 +475,10 @@ def sigusr2_handler(signo,frame):
 	os._exit(0)
 
 def sigusr1_handler(signo,frame):
-        signal.signal(signal.SIGUSR1,sigusr1_handler)
 	print "<<<<<<<<< got a signal " + str(signo) 
 	if "tb" in globals():
            global tb
-	   tb.stop()
+	   print "stopping task block "
 	   tb.disconnect_me()
 
 

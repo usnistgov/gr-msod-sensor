@@ -36,7 +36,7 @@ list(APPEND msod_sensor_sources
 
 add_library(gnuradio-msod_sensor SHARED ${msod_sensor_sources})
 #target_link_libraries(gnuradio-msod_sensor ${Boost_LIBRARIES} ${GNURADIO_RUNTIME_LIBRARIES})
-target_link_libraries(gnuradio-msod_sensor ${Boost_LIBRARIES} ${GNURADIO_ALL_LIBRARIES} ${MONGO_CLIENT_LIBRARY} libcurl.a libssl.so libcrypto.so)
+target_link_libraries(gnuradio-msod_sensor ${Boost_LIBRARIES} ${GNURADIO_ALL_LIBRARIES} ${MONGO_CLIENT_LIBRARY} ${CURL_LIBRARIES} libssl.so libcrypto.so)
 set_target_properties(gnuradio-msod_sensor PROPERTIES DEFINE_SYMBOL "gnuradio_msod_sensor_EXPORTS")
 
 ########################################################################

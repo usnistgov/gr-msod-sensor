@@ -267,20 +267,7 @@ class my_top_block(stdgui2.std_top_block):
         
         usrp_rate = self.u.get_sample_rate()
         if usrp_rate != self.options.samp_rate:
-	      if usrp_rate < self.options.samp_rate:
-	         # create list of allowable rates
-	         samp_rates = self.u.get_sample_rates()
-	         rate_list = [0.0]*len(samp_rates)
-	         for i in range(len(rate_list)):
-		    last_rate = samp_rates.pop()
-		    rate_list[len(rate_list) - 1 - i] = last_rate.start()
-		 # choose next higher rate
-		 rate_ind = rate_list.index(usrp_rate) + 1
-		 if rate_ind < len(rate_list):
-		    self.u.set_samp_rate(rate_list[rate_ind])
-		    usrp_rate = self.u.get_sample_rate()
-		 print "New actual sample rate =", usrp_rate/1e6, "MHz"
-	      resamp = filter.fractional_resampler_cc(0.0, usrp_rate / self.options.samp_rate)
+	    resamp = filter.fractional_resampler_cc(0.0, usrp_rate / self.options.samp_rate)
 
 	print "sample rate " , usrp_rate
 
