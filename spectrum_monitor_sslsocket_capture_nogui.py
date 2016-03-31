@@ -40,7 +40,6 @@ import struct
 import os
 import signal
 import traceback
-from threading import Semaphore
 from multiprocessing import Process
 
 import argparse
@@ -357,14 +356,12 @@ class my_top_block(gr.top_block):
 	self.sensorId = options.sensorId
 	self.det_type = options.det_type
 	self.mongodb_port = options.mongod_port
-	self.sem = Semaphore(0)
 	self.init_flow_graph()
 
 
     def disconnect_me(self):
         try:
 	  print "disconnecting flow graph"
-	  #self.lock()
 	  self.stop()
 	  self.sslsocket_sink.disconnect()
           self.u.get_sample_rates().stop()
@@ -374,7 +371,6 @@ class my_top_block(gr.top_block):
 	     apply(self.disconnect,tuple(self.flow_graph_1))
 	  if self.flow_graph_2 != None:
 	     apply(self.disconnect,tuple(self.flow_graph_2))
-	  #self.unlock()
 	  print "done disconnecting flow graph"
         except RuntimeError:
           print "Source has no sample rates (wrong device arguments?)."
@@ -382,14 +378,6 @@ class my_top_block(gr.top_block):
           sys.exit(1)
 	  os._exit(0)
 
-    def reconnect_me(self):
-        try:
-           self.u.get_sample_rates().start()
-        except RuntimeError:
-	   traceback.print_exc()
-           print "Source has no sample rates (wrong device arguments?)."
-           sys.exit(1)
-	self.init_flow_graph()
 
     def set_freq(self, target_freq):
         """
