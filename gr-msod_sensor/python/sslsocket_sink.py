@@ -31,9 +31,11 @@ import os
 import signal
 import time
 import traceback
+import forensics
 from threading import Thread
 
-def command_handler(capture_sink, trigger,sock,top_block,pid):
+
+def command_handler(trigger,sock,top_block,pid,host,sensorId):
 	print "command_handler : starting "  + str(pid)
 	while True:
 		try :
@@ -50,6 +52,10 @@ def command_handler(capture_sink, trigger,sock,top_block,pid):
 				trigger.setTriggerParams(json.dumps(triggerParams))
 			elif commandJson["command"] == "disarm" :
 			   trigger.disarm()
+                        elif commandJson["command"] == "analyze":
+                            timestamp = commandJson["timestamp"]
+	                    commandThread = Process(target=forensics.analyze,args=(sensorId,timestamp,host))
+                            commandThread.start()
 			else:
                            try:
 			      os.kill(pid,signal.SIGUSR1)
@@ -72,14 +78,28 @@ def command_handler(capture_sink, trigger,sock,top_block,pid):
 class sslsocket_sink(gr.sync_block):
     """
     docstring for block sslsocket_sink
+    
+    dtype - data type.
+    sensorId - sensor ID.
+    items_per_block: # of channels
+    host - host to connect to.
+    port - streaming port.
+    loc_msg - location message.
+    data_msg - data message
+    sys_msg - system message
+    trigger - trigger block (to arm)
+    pid - PID to signal when reconfiguring (my parent process)
+    
+   
     """
-    def __init__(self, dtype, nitems_per_block, host,port,sys_msg,loc_msg,data_msg,capture_sink,trigger,top_block,pid):
+    def __init__(self, dtype,sensorId, nitems_per_block, host,port,sys_msg,loc_msg,data_msg,trigger,top_block,pid):
         gr.sync_block.__init__(self,
             name="sslsocket_sink",
             in_sig=[(dtype, nitems_per_block)],
             out_sig=None)
 	self.host = host
 	self.port = port
+	self.sensorId = sensorId
    	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	self.unwrapped_socket = sock
 	sock.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER,struct.pack('ii', 1, 0))
@@ -92,7 +112,7 @@ class sslsocket_sink(gr.sync_block):
 	self.send_obj(loc_msg)
 	self.data_msg = data_msg
 	self.send_obj(data_msg)
-	commandThread = Process(target=command_handler,args=(capture_sink,trigger,self.sock,top_block,pid))
+	commandThread = Process(target=command_handler,args=(trigger,self.sock,top_block,pid,host,sensorId))
 	commandThread.start()
 
     def reconnect(self,fStart,fStop):
@@ -105,7 +125,7 @@ class sslsocket_sink(gr.sync_block):
 	self.send_obj(self.sys_msg)
 	self.send_obj(self.loc_msg)
 	self.send_obj(self.data_msg)
-	commandThread = Process(target=command_handler,args=(capture_sink,trigger,self.sock,top_block,pid))
+	commandThread = Process(target=command_handler,args=(trigger,self.sock,top_block,pid,host,sensorId))
 	commandThread.start()
         
 

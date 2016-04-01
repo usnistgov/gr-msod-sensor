@@ -32,6 +32,7 @@ GR_PYTHON_INSTALL(
     FILES
     __init__.py
     websocket_sink.py
+    forensics.py
     sslsocket_sink.py DESTINATION ${GR_PYTHON_DIR}/msod_sensor
 )
 

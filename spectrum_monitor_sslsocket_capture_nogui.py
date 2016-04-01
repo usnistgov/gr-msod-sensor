@@ -123,17 +123,26 @@ def init_osmosdr(options):
 	u =  osmosdr.source(args=options.args)
        	u.set_freq_corr(0, 0)
        	u.set_dc_offset_mode(1, 0)
-	u.set_dc_offset(1,0)
+	u.set_dc_offset(0,0)
        	u.set_iq_balance_mode(0, 0)
        	u.set_gain_mode(True, 0)
        	u.set_gain(6, 0)
        	u.set_if_gain(15, 0)
        	u.set_bb_gain(7, 0)
         # Walk through the sample rates of the device and pick
-	for p in u.get_sample_rates():
-	    if p.start() >= options.samp_rate:
-		  u.set_sample_rate(float(p.start()))
-		  break
+	u.set_sample_rate(options.samp_rate)
+        if u.get_sample_rate() != options.samp_rate:
+	    sample_rate_set = False
+	    for p in u.get_sample_rates():
+	       if p.start() >= options.samp_rate:
+	            print "sample_rates size ", u.get_sample_rates().size()
+		    sample_rate_set = True
+		    u.set_sample_rate(float(p.start()))
+		    break
+	    if not sample_rate_set:
+		print "Cannot set sample rate - exitting "
+		sys.exit(0)
+		os._exit(0)
         try:
            u.get_sample_rates().start()
         except RuntimeError:
@@ -226,10 +235,10 @@ class my_top_block(gr.top_block):
         usrp_rate = self.u.get_sample_rate()
         
         if usrp_rate != self.options.samp_rate:
+	   print "usrp_rate/options.samp_rate", usrp_rate,self.options.samp_rate
            print "rate mismatch -- inserting fractional resampler"
 	   resamp = filter.fractional_resampler_cc(0.0, usrp_rate / self.options.samp_rate)
 
-	print "sample rate " , usrp_rate
 
         # Set the antenna
         if(self.options.antenna):
@@ -316,7 +325,7 @@ class my_top_block(gr.top_block):
 	
 	trigger = myblocks.level_capture_trigger(itemsize=gr.sizeof_gr_complex,level=25,window_size=1024)
 	# Note: pass the trigger here so the trigger can be armed.
-	self.sslsocket_sink = myblocks.sslsocket_sink(numpy.int8, self.num_ch,self.dest_host,self.port,self.sys_msg,self.loc_msg,self.data_msg,capture_sink,trigger,self,os.getpid())
+	self.sslsocket_sink = myblocks.sslsocket_sink(numpy.int8, self.sensorId, self.num_ch,self.dest_host,self.port,self.sys_msg,self.loc_msg,self.data_msg,trigger,self,os.getpid())
 
 	if usrp_rate > self.samp_rate:
 	    self.connect(self.u, resamp, s2v)

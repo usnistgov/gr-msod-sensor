@@ -35,6 +35,7 @@ namespace gr {
 	int d_itemsize;
 	size_t d_level;
 	size_t d_window_size;
+	bool d_logging_enabled;
 
         boost::interprocess::mapped_region  * d_armed;
 	

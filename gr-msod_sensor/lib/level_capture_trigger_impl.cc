@@ -50,6 +50,7 @@ level_capture_trigger_impl::level_capture_trigger_impl(size_t itemsize, int leve
     this->d_window_size = window_size;
     this->d_itemcount = 0;
     this->d_itemsize = itemsize;
+    this->d_logging_enabled = true;
     // Shared memory because this is signalled from a separate process that reads commands from the server.
     this->d_armed = new boost::interprocess::mapped_region(boost::interprocess::anonymous_shared_memory(sizeof(int)));
     memset(d_armed->get_address(), 0, d_armed->get_size());
@@ -111,20 +112,26 @@ level_capture_trigger_impl::general_work (int noutput_items,
     this->d_itemcount = this->d_itemcount + noutput_items;
     // Capture the window. Find the max power in the window. 
     // If this power exceeds a threshold then signal.
+    // GR_LOG_DEBUG(d_debug_logger,"level_capture_trigger::ninput_items " + std::to_string(noutput_items) + " itemsize " + std::to_string(d_itemsize) );
     
     if (this->is_armed()) {
 	// TODO-- this assumes float32 inputs.
-        for(int i = 0; i< noutput_items/2; i += 2) {
-	   float ivalue = *((float*)input_items[i]);
-	   float qvalue = *((float*)input_items[i+1]);
+        for(int i = 0; i< noutput_items; i ++) {
+	   float ivalue = (float) *(in + i*d_itemsize);
+	   float qvalue = (float) *(in + i*d_itemsize + 4);
 	   float power = ivalue*ivalue + qvalue*qvalue;
 	   if (power > d_level) {
        	      message_port_pub(pmt::mp("trigger"),pmt::intern(std::string("start")));
        	      GR_LOG_DEBUG(d_debug_logger,"level_capture_trigger::work pub" );
 	      break;
+	   } else {
+	      if (this->d_logging_enabled ) {
+       	          GR_LOG_DEBUG(d_debug_logger,"level_capture_trigger:: power level " + std::to_string(power)  );
+	      }
 	   }
 	}
 	this->disarm();
+	this->d_logging_enabled = false;
     }
 
     in = (char*)input_items[0];
