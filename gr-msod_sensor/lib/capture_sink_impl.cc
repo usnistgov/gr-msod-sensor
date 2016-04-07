@@ -82,7 +82,7 @@ capture_sink_impl::capture_sink_impl(size_t itemsize, size_t chunksize, char* ca
     d_chunksize = chunksize;
     d_itemcount = 0;
     d_current_capture_file = NULL;
-    d_capture_buffer = new char*[chunksize];
+    d_capture_buffer = new gr_complex[chunksize];
     memset(d_capture_buffer,0,sizeof(d_capture_buffer));
     memset(d_start_capture->get_address(), 0, d_start_capture->get_size());
     d_event_url = new char[strlen(event_url) + 1];
@@ -115,8 +115,9 @@ capture_sink_impl::~capture_sink_impl()
 */
 time_t capture_sink_impl::generate_timestamp() {
     GR_LOG_DEBUG(d_debug_logger,"capture_sink_impl::generate_timestamp ");
-    time_t  timev;
-    time(&timev);
+    struct timeval tp;
+    gettimeofday(&tp, NULL);
+    time_t  timev = tp.tv_sec;
     std::string* dirname = new std::string(d_capture_dir);
     dirname->append("/capture-");
     std::string time_stamp = std::to_string(timev);
@@ -203,12 +204,16 @@ capture_sink_impl::dump_buffer() {
     }
     int count = 0;
     for (int i = 0; i < d_itemcount; i++) {
-        char* item = d_capture_buffer[i];
-        assert(item != NULL);
-        int written = write(fd,item,d_itemsize);
-        if (written != d_itemsize) {
-            GR_LOG_ERROR(d_debug_logger,"capture_sink_impl::dump_buffer: write failed. written =  " + std::to_string(written)
-                         + " d_itemsize " + std::to_string(d_itemsize) + " item " );
+	float real = d_capture_buffer[i].real();
+        int written = write(fd,&real,sizeof(float));
+        if (written != sizeof(float)) {
+            GR_LOG_ERROR(d_debug_logger,"capture_sink_impl::dump_buffer: write failed. written =  " + std::to_string(written));
+            return false;
+        }
+	float imag = d_capture_buffer[i].imag();
+        written = write(fd,&imag,sizeof(float));
+        if (written != sizeof(float)) {
+            GR_LOG_ERROR(d_debug_logger,"capture_sink_impl::dump_buffer: write failed. written =  " + std::to_string(written));
             return false;
         }
         count ++;
@@ -216,11 +221,10 @@ capture_sink_impl::dump_buffer() {
     close(fd);
     GR_LOG_DEBUG(d_debug_logger,"capture_sink_impl::dump_buffer: wrote " + std::to_string(count) + " elements to file : " + *d_current_capture_file);
     time_t universal_timestamp = ts + d_time_offset;
-
     mongo::BSONObjBuilder builder;
     builder.appendElements(d_event_message);
     mongo::BSONObj data_message = builder.append("_capture_file",*d_current_capture_file)
-                                  .appendNumber("t",(long long) universal_timestamp)
+                                  .appendNumber("t",(long long) (long)universal_timestamp)
                                   .appendNumber("sample_count",(long long) d_itemcount)
                                   .obj();
 
@@ -271,9 +275,6 @@ capture_sink_impl::dump_buffer() {
 void
 capture_sink_impl::clear_buffer() {
     // Clear the capture vector. This also deletes the elements of the capture buffer.
-    for (int i = 0; i < d_itemcount; i++) {
-        delete d_capture_buffer[i];
-    }
     d_itemcount = 0;
 }
 
@@ -286,8 +287,7 @@ capture_sink_impl::work(int noutput_items,
 {
 
     // Capture is enabled.
-    const char *in = (const char *) input_items[0];
-    char *out = (char *) output_items[0];
+    const gr_complex *input = (const gr_complex *) input_items[0];
     // Capture is not enabled. Just pass through.
     int start_capture_flag;
     memcpy(&start_capture_flag,d_start_capture->get_address(),sizeof(int));
@@ -298,9 +298,7 @@ capture_sink_impl::work(int noutput_items,
     GR_LOG_DEBUG(d_debug_logger,"capture_sink_impl::work noutput_items " + std::to_string(noutput_items));
 #endif
     int buffercounter = 0;
-    for (int i = 0; i < noutput_items; i++ ) {
-        char* item =  (char*) (in + buffercounter);
-        buffercounter = buffercounter + d_itemsize;
+    for (int i = 0; i < noutput_items; i++ , input++) {
         // Exceeded our storage capacity? So dump the buffer and clear it.
         if (d_itemcount ==  d_chunksize && start_capture_flag) {
     	   memset(d_start_capture->get_address(), 0, d_start_capture->get_size());
@@ -310,11 +308,8 @@ capture_sink_impl::work(int noutput_items,
 		return noutput_items;
 	   }
         }
-        // Our queue is not yet full.
-        char* newitem  = new char[d_itemsize];
-        assert(newitem != NULL);
-        memcpy(newitem,item,d_itemsize);
-        d_capture_buffer[d_itemcount] = newitem;
+        // Our queue is not yet full. Keep adding to it.
+        d_capture_buffer[d_itemcount] = *input;
         d_itemcount++;
     }
     return noutput_items;

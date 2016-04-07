@@ -10,6 +10,5 @@
 "OL": "NaN", 
 "DataType": "Binary - int8",
 "Sensitivity": "Low", 
-"mType": "IQ-Raw", 
-"t": 1432171042 
+"mType": "IQ-Raw"
 }

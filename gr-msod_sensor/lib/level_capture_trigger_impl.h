@@ -33,9 +33,11 @@ namespace gr {
      private:
 	int d_itemcount;
 	int d_itemsize;
-	size_t d_level;
+	double d_level;
 	size_t d_window_size;
 	bool d_logging_enabled;
+	float d_power_in_window;
+	int d_window_counter;
 
         boost::interprocess::mapped_region  * d_armed;
 	

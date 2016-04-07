@@ -22,6 +22,7 @@
 #include "config.h"
 #endif
 
+#include <math.h>
 #include <gnuradio/io_signature.h>
 #include <pmt/pmt.h>
 #include <gnuradio/prefs.h>
@@ -46,11 +47,15 @@ level_capture_trigger_impl::level_capture_trigger_impl(size_t itemsize, int leve
                      gr::io_signature::make(1, 1, itemsize),
                      gr::io_signature::make(1, 1, itemsize))
 {
-    this->d_level = level;
+    // power level in dbm -- conver to actual value.
+    this->d_level = pow(10.0,(float)level/10.0);
     this->d_window_size = window_size;
     this->d_itemcount = 0;
     this->d_itemsize = itemsize;
     this->d_logging_enabled = true;
+    // initialize accumulators.
+    this->d_power_in_window = 0;
+    this->d_window_counter = 0;
     // Shared memory because this is signalled from a separate process that reads commands from the server.
     this->d_armed = new boost::interprocess::mapped_region(boost::interprocess::anonymous_shared_memory(sizeof(int)));
     memset(d_armed->get_address(), 0, d_armed->get_size());
@@ -64,6 +69,8 @@ level_capture_trigger_impl::level_capture_trigger_impl(size_t itemsize, int leve
     std::string log_level = p->get_string("LOG", "log_level", "info");
     GR_LOG_SET_LEVEL(d_debug_logger,log_level);
 #endif
+   GR_LOG_DEBUG(d_debug_logger,"level_capture_trigger::level_capture_trigger: itemsize = " + std::to_string(itemsize) + 
+	 " level = " + std::to_string(level)  + " level (energy) " +  std::to_string(this->d_level) + " window_size = " + std::to_string(window_size))
 }
 
 /*
@@ -110,32 +117,37 @@ level_capture_trigger_impl::general_work (int noutput_items,
     char *out = (char *) output_items[0];
     unsigned int byte_size = noutput_items * this->d_itemsize;
     this->d_itemcount = this->d_itemcount + noutput_items;
+
+    const gr_complex *input = (const gr_complex *) input_items[0];
+
+
     // Capture the window. Find the max power in the window. 
     // If this power exceeds a threshold then signal.
     // GR_LOG_DEBUG(d_debug_logger,"level_capture_trigger::ninput_items " + std::to_string(noutput_items) + " itemsize " + std::to_string(d_itemsize) );
     
     if (this->is_armed()) {
 	// TODO-- this assumes float32 inputs.
-        for(int i = 0; i< noutput_items; i ++) {
-	   float ivalue = (float) *(in + i*d_itemsize);
-	   float qvalue = (float) *(in + i*d_itemsize + 4);
+        for(int i = 0; i< noutput_items; i ++,input++) {
+	   float ivalue = input->real();
+	   float qvalue = input->imag();
 	   float power = ivalue*ivalue + qvalue*qvalue;
-	   if (power > d_level) {
-       	      message_port_pub(pmt::mp("trigger"),pmt::intern(std::string("start")));
-       	      GR_LOG_DEBUG(d_debug_logger,"level_capture_trigger::work pub" );
-	      break;
-	   } else {
-	      if (this->d_logging_enabled ) {
-       	          GR_LOG_DEBUG(d_debug_logger,"level_capture_trigger:: power level " + std::to_string(power)  );
-	      }
+	   this->d_power_in_window = d_power_in_window + power;
+	   this->d_window_counter++ ;
+	   if (this->d_window_counter == this->d_window_size) {
+		float average_power = d_power_in_window / d_window_size;
+       	        GR_LOG_DEBUG(d_debug_logger,"level_capture_trigger::work average_power : " + std::to_string(average_power)) ;
+		this->d_window_counter = 0;
+	        if (average_power > d_level) {
+       	           message_port_pub(pmt::mp("trigger"),pmt::intern(std::string("start")));
+       	           GR_LOG_DEBUG(d_debug_logger,"level_capture_trigger::work pub" );
+	           break;
+	       } 
 	   }
 	}
 	this->disarm();
 	this->d_logging_enabled = false;
     }
 
-    in = (char*)input_items[0];
-    byte_size = noutput_items * d_itemsize;
     memcpy(out,in,byte_size);
     consume_each (noutput_items);
     return noutput_items;

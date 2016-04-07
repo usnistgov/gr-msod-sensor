@@ -212,7 +212,7 @@ class my_top_block(gr.top_block):
     	self.event_msg['mPar']['fStop'] = self.stop_freq
     	self.event_msg['mPar']['Atten'] = self.atten
     	self.event_msg['mPar']['n'] = self.num_ch
-    	self.event_msg['mPar']['samp_rate'] = self.samp_rate
+    	self.event_msg['mPar']['sampRate'] = self.samp_rate
 
     def init_flow_graph(self):
 	self.read_configuration()
@@ -323,7 +323,7 @@ class my_top_block(gr.top_block):
 	self.initialize_message_headers()
 	capture_sink.set_event_message(str(json.dumps(self.event_msg)))
 	
-	trigger = myblocks.level_capture_trigger(itemsize=gr.sizeof_gr_complex,level=25,window_size=1024)
+	trigger = myblocks.level_capture_trigger(itemsize=gr.sizeof_gr_complex,level=-30,window_size=1024)
 	# Note: pass the trigger here so the trigger can be armed.
 	self.sslsocket_sink = myblocks.sslsocket_sink(numpy.int8, self.sensorId, self.num_ch,self.dest_host,self.port,self.sys_msg,self.loc_msg,self.data_msg,trigger,self,os.getpid())
 
@@ -339,6 +339,7 @@ class my_top_block(gr.top_block):
 	self.flow_graph_1 = self.flow_graph_1 + [ffter,c2mag,self.aggr,self.stats,W2dBm,f2c,self.sslsocket_sink]
 	# Second pipeline to the sink.
 	self.connect(self.u,trigger,capture_sink)
+	# record the configuration.
 	self.flow_graph_2 = [trigger,capture_sink]
 	self.msg_connect(trigger,"trigger",capture_sink,"capture")
 

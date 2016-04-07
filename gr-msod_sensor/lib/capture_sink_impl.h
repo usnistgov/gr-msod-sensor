@@ -46,7 +46,7 @@ namespace gr {
       long   d_itemcount;
       boost::interprocess::mapped_region  * d_start_capture;
       long   d_capture_freq;
-      char** d_capture_buffer;
+      gr_complex* d_capture_buffer;
       char*  d_event_url;
       mongo::BSONObj d_event_message;
       std::ofstream d_logfile;

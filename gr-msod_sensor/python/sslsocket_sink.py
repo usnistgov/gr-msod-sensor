@@ -53,8 +53,9 @@ def command_handler(trigger,sock,top_block,pid,host,sensorId):
 			elif commandJson["command"] == "disarm" :
 			   trigger.disarm()
                         elif commandJson["command"] == "analyze":
+			    algorithm = commandJson["algorithm"]
                             timestamp = commandJson["timestamp"]
-	                    commandThread = Process(target=forensics.analyze,args=(sensorId,timestamp,host))
+	                    commandThread = Process(target=forensics.analyze,args=(algorithm,sensorId,timestamp,host))
                             commandThread.start()
 			else:
                            try:
