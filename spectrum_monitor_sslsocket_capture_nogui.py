@@ -114,6 +114,8 @@ def parse_options():
                           help="Set dBFS=0dB input value, default=[%default]")
         parser.add_option("", "--impedance", type="eng_float", default=50.0,
                           help="Set dBFS=0dB input value, default=[%default]")
+	parser.add_option("","--capture-duration", type="eng_float",default=3.0,
+			help="I/Q capture duration (s), default = [%default]")
 
         (options, args) = parser.parse_args()
 	return options,args
@@ -317,15 +319,17 @@ class my_top_block(gr.top_block):
         delta = long(round(getLocalUtcTimeStamp() - time.time()))
 	print "delta = ",delta
 
-        capture_sink = myblocks.capture_sink(itemsize=gr.sizeof_gr_complex, chunksize = 500, capture_dir="/tmp", mongodb_port=self.mongodb_port,\
+	chunksize = int(self.options.samp_rate*self.options.capture_duration)
+        capture_sink = myblocks.capture_sink(itemsize=gr.sizeof_gr_complex, chunksize = chunksize, samp_rate = int(self.options.samp_rate), capture_dir="/tmp", mongodb_port=self.mongodb_port,\
 		event_url="https://" + self.dest_host + ":" + str(443) +  "/eventstream/postCaptureEvent", time_offset = delta)
 	
 	self.initialize_message_headers()
 	capture_sink.set_event_message(str(json.dumps(self.event_msg)))
 	
-	trigger = myblocks.level_capture_trigger(itemsize=gr.sizeof_gr_complex,level=-30,window_size=1024)
+	trigger = myblocks.level_capture_trigger(itemsize=gr.sizeof_gr_complex,level=-40,window_size=1024)
 	# Note: pass the trigger here so the trigger can be armed.
-	self.sslsocket_sink = myblocks.sslsocket_sink(numpy.int8, self.sensorId, self.num_ch,self.dest_host,self.port,self.sys_msg,self.loc_msg,self.data_msg,trigger,self,os.getpid())
+	self.sslsocket_sink = myblocks.sslsocket_sink(numpy.int8, self.sensorId, self.num_ch,self.dest_host,self.port,\
+		self.sys_msg,self.loc_msg,self.data_msg,trigger,self,os.getpid())
 
 	if usrp_rate > self.samp_rate:
 	    self.connect(self.u, resamp, s2v)

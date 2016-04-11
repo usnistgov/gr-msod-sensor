@@ -22,7 +22,7 @@
 #include "config.h"
 #endif
 
-#define IQCAPTURE_DEBUG
+//#define IQCAPTURE_DEBUG
 
 #include <gnuradio/io_signature.h>
 #include <gnuradio/prefs.h>
@@ -50,16 +50,16 @@ namespace msod_sensor {
 
 
 capture_sink::sptr
-capture_sink::make(size_t itemsize, size_t chunksize, char* capture_dir, int mongodb_port, char* event_url, int time_offset)
+capture_sink::make(size_t itemsize, size_t chunksize, size_t samp_rate, char* capture_dir, int mongodb_port, char* event_url, int time_offset)
 {
     return gnuradio::get_initial_sptr
-           (new capture_sink_impl(itemsize, chunksize, capture_dir,mongodb_port,event_url,time_offset));
+           (new capture_sink_impl(itemsize, chunksize, samp_rate, capture_dir,mongodb_port,event_url,time_offset));
 }
 
 /*
  * The private constructor
  */
-capture_sink_impl::capture_sink_impl(size_t itemsize, size_t chunksize, char* capture_dir, int mongodb_port, char* event_url, int time_offset)
+capture_sink_impl::capture_sink_impl(size_t itemsize, size_t chunksize, size_t samp_rate, char* capture_dir, int mongodb_port, char* event_url, int time_offset)
     :gr::sync_block("capture_sink",
                     gr::io_signature::make(1, 1, itemsize),
                     gr::io_signature::make(0, 0, 0))
@@ -77,6 +77,7 @@ capture_sink_impl::capture_sink_impl(size_t itemsize, size_t chunksize, char* ca
     d_start_capture = new boost::interprocess::mapped_region(boost::interprocess::anonymous_shared_memory(sizeof(int)));
     d_time_offset = time_offset;
     d_itemsize = itemsize;
+    d_samp_rate = samp_rate;
     d_capture_dir = new char[strlen(capture_dir) + 1];
     strcpy(d_capture_dir,capture_dir);
     d_chunksize = chunksize;
@@ -202,29 +203,14 @@ capture_sink_impl::dump_buffer() {
         GR_LOG_ERROR(d_debug_logger,"capture_sink_impl::dump_buffer: open failed on : " + *d_current_capture_file->c_str());
         return false;
     }
-    int count = 0;
-    for (int i = 0; i < d_itemcount; i++) {
-	float real = d_capture_buffer[i].real();
-        int written = write(fd,&real,sizeof(float));
-        if (written != sizeof(float)) {
-            GR_LOG_ERROR(d_debug_logger,"capture_sink_impl::dump_buffer: write failed. written =  " + std::to_string(written));
-            return false;
-        }
-	float imag = d_capture_buffer[i].imag();
-        written = write(fd,&imag,sizeof(float));
-        if (written != sizeof(float)) {
-            GR_LOG_ERROR(d_debug_logger,"capture_sink_impl::dump_buffer: write failed. written =  " + std::to_string(written));
-            return false;
-        }
-        count ++;
-    }
+    size_t written = write(fd,d_capture_buffer,d_chunksize*sizeof(gr_complex));
     close(fd);
-    GR_LOG_DEBUG(d_debug_logger,"capture_sink_impl::dump_buffer: wrote " + std::to_string(count) + " elements to file : " + *d_current_capture_file);
+    GR_LOG_DEBUG(d_debug_logger,"capture_sink_impl::dump_buffer: wrote " + std::to_string(written) + " elements to file : " + *d_current_capture_file);
     time_t universal_timestamp = ts + d_time_offset;
     mongo::BSONObjBuilder builder;
     builder.appendElements(d_event_message);
     mongo::BSONObj data_message = builder.append("_capture_file",*d_current_capture_file)
-                                  .appendNumber("t",(long long) (long)universal_timestamp)
+                                  .appendNumber("t",(long long) universal_timestamp)
                                   .appendNumber("sample_count",(long long) d_itemcount)
                                   .obj();
 

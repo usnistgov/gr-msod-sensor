@@ -93,7 +93,7 @@ class sslsocket_sink(gr.sync_block):
     
    
     """
-    def __init__(self, dtype,sensorId, nitems_per_block, host,port,sys_msg,loc_msg,data_msg,trigger,top_block,pid):
+    def __init__(self, dtype,sensorId, nitems_per_block, host, port, sys_msg, loc_msg, data_msg, trigger, top_block, pid):
         gr.sync_block.__init__(self,
             name="sslsocket_sink",
             in_sig=[(dtype, nitems_per_block)],

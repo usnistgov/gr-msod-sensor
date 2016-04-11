@@ -84,7 +84,7 @@ class qa_capture_sink (gr_unittest.TestCase):
 	self.chunksize = 500
 	self.itemsize = gr.sizeof_float
 	msodHost = os.environ.get("MSOD_WEB_HOST")
-        self.capture_sink = capture.capture_sink(itemsize=self.itemsize, chunksize = self.chunksize, capture_dir="/tmp", mongodb_port=MONGODB_PORT, event_url="https://" + msodHost + ":" + str(443)  + "/eventstream/postCaptureEvent",time_offset = 0)
+        self.capture_sink = capture.capture_sink(itemsize=self.itemsize, chunksize = self.chunksize, samp_rate = 10e6, capture_dir="/tmp", mongodb_port=MONGODB_PORT, event_url="https://" + msodHost + ":" + str(443)  + "/eventstream/postCaptureEvent",time_offset = 0)
 	self.tb.connect(self.throttle,self.capture_sink)
 
     def tearDown (self):

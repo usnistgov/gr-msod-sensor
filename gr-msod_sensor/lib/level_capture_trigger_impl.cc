@@ -120,6 +120,8 @@ level_capture_trigger_impl::general_work (int noutput_items,
 
     const gr_complex *input = (const gr_complex *) input_items[0];
 
+    static bool printDebug = true;
+
 
     // Capture the window. Find the max power in the window. 
     // If this power exceeds a threshold then signal.
@@ -137,17 +139,20 @@ level_capture_trigger_impl::general_work (int noutput_items,
 		float average_power = d_power_in_window / d_window_size;
        	        GR_LOG_DEBUG(d_debug_logger,"level_capture_trigger::work average_power : " + std::to_string(average_power)) ;
 		this->d_window_counter = 0;
+		this->d_power_in_window = 0;
 	        if (average_power > d_level) {
        	           message_port_pub(pmt::mp("trigger"),pmt::intern(std::string("start")));
        	           GR_LOG_DEBUG(d_debug_logger,"level_capture_trigger::work pub" );
+		   // One shot behavior -- TODO make this configurable.
+		   this->disarm();
 	           break;
 	       } 
-	   }
+	       
+	   } 
 	}
-	this->disarm();
 	this->d_logging_enabled = false;
-    }
-
+    } 
+      
     memcpy(out,in,byte_size);
     consume_each (noutput_items);
     return noutput_items;

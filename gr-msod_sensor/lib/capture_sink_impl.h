@@ -43,6 +43,7 @@ namespace gr {
       int    d_time_offset;
       char*  d_websocket_url; 
       size_t d_chunksize;
+      size_t d_samp_rate;
       long   d_itemcount;
       boost::interprocess::mapped_region  * d_start_capture;
       long   d_capture_freq;
@@ -65,7 +66,7 @@ namespace gr {
 
 
      public:
-      capture_sink_impl(size_t itemsize, size_t chunksize, char* capture_dir, int mongodb_port, char* event_url, int time_offset);
+      capture_sink_impl(size_t itemsize, size_t chunksize, size_t samp_rate, char* capture_dir, int mongodb_port, char* event_url, int time_offset);
       ~capture_sink_impl();
       // Where all the action really happens
       int work(int noutput_items,
