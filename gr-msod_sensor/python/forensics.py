@@ -12,5 +12,9 @@ def analyze(algorithm,sensorId,timestamp,host):
        print "could not find sample"
 
     client.close()
+
+def garbage_collect(sensorId, timestamp):
+    # TODO
+    print "garbage_collect : ",sensorId,timestamp
       
 

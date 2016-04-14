@@ -137,7 +137,9 @@ level_capture_trigger_impl::general_work (int noutput_items,
 	   this->d_window_counter++ ;
 	   if (this->d_window_counter == this->d_window_size) {
 		float average_power = d_power_in_window / d_window_size;
+#ifdef IQCAPTURE_DEBUG
        	        GR_LOG_DEBUG(d_debug_logger,"level_capture_trigger::work average_power : " + std::to_string(average_power)) ;
+#endif
 		this->d_window_counter = 0;
 		this->d_power_in_window = 0;
 	        if (average_power > d_level) {

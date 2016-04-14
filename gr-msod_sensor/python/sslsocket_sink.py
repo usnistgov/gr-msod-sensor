@@ -57,6 +57,10 @@ def command_handler(trigger,sock,top_block,pid,host,sensorId):
                             timestamp = commandJson["timestamp"]
 	                    commandThread = Process(target=forensics.analyze,args=(algorithm,sensorId,timestamp,host))
                             commandThread.start()
+                        elif commandJson["command"] == "garbage_collect":
+                            timestamp = commandJson["timestamp"]
+	                    commandThread = Process(target=forensics.garbage_collect,args=(sensorId,timestamp))
+                            commandThread.start()
 			else:
                            try:
 			      os.kill(pid,signal.SIGUSR1)

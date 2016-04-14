@@ -214,7 +214,7 @@ class my_top_block(gr.top_block):
     	self.event_msg['mPar']['fStop'] = self.stop_freq
     	self.event_msg['mPar']['Atten'] = self.atten
     	self.event_msg['mPar']['n'] = self.num_ch
-    	self.event_msg['mPar']['sampRate'] = self.samp_rate
+    	self.event_msg['mPar']['sampRate'] = self.u.get_sample_rate()
 
     def init_flow_graph(self):
 	self.read_configuration()
@@ -235,7 +235,7 @@ class my_top_block(gr.top_block):
 
 
         usrp_rate = self.u.get_sample_rate()
-        
+         
         if usrp_rate != self.options.samp_rate:
 	   print "usrp_rate/options.samp_rate", usrp_rate,self.options.samp_rate
            print "rate mismatch -- inserting fractional resampler"
@@ -319,8 +319,8 @@ class my_top_block(gr.top_block):
         delta = long(round(getLocalUtcTimeStamp() - time.time()))
 	print "delta = ",delta
 
-	chunksize = int(self.options.samp_rate*self.options.capture_duration)
-        capture_sink = myblocks.capture_sink(itemsize=gr.sizeof_gr_complex, chunksize = chunksize, samp_rate = int(self.options.samp_rate), capture_dir="/tmp", mongodb_port=self.mongodb_port,\
+	chunksize = int(self.u.get_sample_rate()*self.options.capture_duration)
+        capture_sink = myblocks.capture_sink(itemsize=gr.sizeof_gr_complex, chunksize = chunksize, samp_rate = int(self.u.get_sample_rate()), capture_dir="/tmp", mongodb_port=self.mongodb_port,\
 		event_url="https://" + self.dest_host + ":" + str(443) +  "/eventstream/postCaptureEvent", time_offset = delta)
 	
 	self.initialize_message_headers()
