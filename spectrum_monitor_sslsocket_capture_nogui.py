@@ -87,41 +87,50 @@ def parse_options():
 	                  help="Subdevice of UHD device where appropriate")
         parser.add_option("-A", "--antenna", type="string", default=None,
                           help="select Rx Antenna where appropriate")
-        parser.add_option("-s", "--samp-rate", type="eng_float", default=1e6,
-                          help="set sample rate [default=%default]")
         parser.add_option("-g", "--gain", type="eng_float", default=None,
                           help="set gain in dB (default is midpoint)")
-    	parser.add_option("-t", "--det-type", type="string", default="avg",
-                          help="set detection type ('avg' or 'peak') [default=%default]")
         parser.add_option("-l", "--lo-offset", type="eng_float",
                           default=0, metavar="Hz",
                           help="lo_offset in Hz [default=half the sample rate]")
-        parser.add_option("-F", "--fft-size", type="int", default=1024,
-                          help="specify number of FFT bins [default=%default]")
         parser.add_option("", "--real-time", action="store_true", default=False,
                           help="Attempt to enable real-time scheduling")
     	parser.add_option("-d", "--dest-host", type="string", default="",
                           help="set destination host for streaming data")
         parser.add_option("", "--skip-DC", action="store_true", default=False,
                           help="skip the DC bin when mapping channels")
-	parser.add_option("-S","--sensorId", type = "string", default = None, help="Sensor ID -- default will use serial number of sensor")
+	parser.add_option("-S","--sensorId", type = "string", default = None, help="Sensor ID must be unique")
 	parser.add_option("-m","--mongod-port", type = "int", default = 2017, help="Mongodb port")
-        parser.add_option("", "--avg-alpha", type="eng_float", default=1e-1,
-                          help="Set fftsink averaging factor, default=[%default]")
         parser.add_option("", "--fft-rate", type="int", default=30,
                           help="Set FFT update rate, [default=%default]")
-        parser.add_option("", "--ref-scale", type="eng_float", default=1.0,
-                          help="Set dBFS=0dB input value, default=[%default]")
-        parser.add_option("", "--impedance", type="eng_float", default=50.0,
-                          help="Set dBFS=0dB input value, default=[%default]")
+        parser.add_option("", "--scale", type="eng_float", default=10.0,
+                          help="Multiplicative scale parameter for power default=[%default]")
 	parser.add_option("","--capture-duration", type="eng_float",default=3.0,
 			help="I/Q capture duration (s), default = [%default]")
+	parser.add_option("","--power-offset", type = "eng_float", default = 30,
+			help="Additive power offset. ")
 
         (options, args) = parser.parse_args()
 	return options,args
 
 
-def init_osmosdr(options):
+def init_file_source(options):
+	args = options.args
+	fileName = str.split(args,"=")[1]
+	file_source = blocks.file_source(itemsize = gr.sizeof_gr_complex, filename = fileName, repeat = True)
+	return file_source
+	
+	
+
+def init_osmosdr(options,config):
+	print "init_osmosdr", json.dumps(config,indent=4)
+        activeBands = config["thresholds"]
+        for band in activeBands.values():
+	    if band["active"]:
+	        start_freq = band["minFreqHz"]
+	        stop_freq = band["maxFreqHz"]
+                num_ch = band["channelCount"]
+	        samp_rate = band["samplingRate"]
+		fft_size = band["fftSize"]
 	u =  osmosdr.source(args=options.args)
        	u.set_freq_corr(0, 0)
        	u.set_dc_offset_mode(1, 0)
@@ -132,11 +141,11 @@ def init_osmosdr(options):
        	u.set_if_gain(15, 0)
        	u.set_bb_gain(7, 0)
         # Walk through the sample rates of the device and pick
-	u.set_sample_rate(options.samp_rate)
-        if u.get_sample_rate() != options.samp_rate:
+	u.set_sample_rate(samp_rate)
+        if u.get_sample_rate() != samp_rate:
 	    sample_rate_set = False
 	    for p in u.get_sample_rates():
-	       if p.start() >= options.samp_rate:
+	       if p.start() >= samp_rate:
 	            print "sample_rates size ", u.get_sample_rates().size()
 		    sample_rate_set = True
 		    u.set_sample_rate(float(p.start()))
@@ -161,30 +170,37 @@ class MyAdapter(HTTPAdapter):
                                        block=block,
                                        ssl_version=ssl.PROTOCOL_SSLv3)
 
+def read_configuration(sensor_id,dest_host):
+    print 'host:',dest_host
+    print 'Requestion port on:'+ 'https://'+dest_host+':443/sensordata/getStreamingPort/'+sensor_id 
+    result = {}
+    r = requests.post('https://'+dest_host+':443/sensordata/getStreamingPort/'+sensor_id, verify=False)
+    json = r.json()
+    port = json["port"]
+    print 'socket port =',port 
+    print 'Get Sensor Config on:'+ 'https://'+dest_host+':443/sensordb/getSensorConfig/'+sensor_id
+    r = requests.post('https://'+dest_host+':443/sensordb/getSensorConfig/'+sensor_id, verify=False)
+    print 'server response:', r.text
+    json = r.json()
+    return json["sensorConfig"],port
+
+
 class my_top_block(gr.top_block):
-    def read_configuration(self):
-    	print 'host:',self.dest_host
-    	sensor_id= self.sensorId
-    	print 'Requestion port on:'+ 'https://'+self.dest_host+':443/sensordata/getStreamingPort/'+sensor_id 
-    	r = requests.post('https://'+self.dest_host+':443/sensordata/getStreamingPort/'+sensor_id, verify=False)
-    	json = r.json()
-    	port = json["port"]
-    	print 'socket port =',port 
-    	self.port = port
-    	print 'Requestion port on:'+ 'https://'+self.dest_host+':443/sensordb/getSensorConfig/'+sensor_id
-    	r = requests.post('https://'+self.dest_host+':443/sensordb/getSensorConfig/'+sensor_id, verify=False)
-    	#print 'server response:', r.text
-    	json = r.json()
-	#Reads in min & max frequency
-	activeBands = json["sensorConfig"]["thresholds"]
-	self.meas_interval = json["sensorConfig"]["streaming"]["streamingSecondsPerFrame"]
-	for band in activeBands.values():
-		if band["active"]:
-			self.start_freq = band["minFreqHz"]
-			self.stop_freq = band["maxFreqHz"]
-			print str(band["minFreqHz"])
-			print str(band["maxFreqHz"])
-                        self.num_ch = band["channelCount"]
+
+    def init_config(self,config):
+	"""
+	Initialize the configuration based on what has been read from the server.
+        """
+	self.det_type = config["streaming"]["streamingFilter"]
+        self.meas_interval = config["streaming"]["streamingSecondsPerFrame"]
+        activeBands = config["thresholds"]
+        for band in activeBands.values():
+	    if band["active"]:
+	        self.start_freq = band["minFreqHz"]
+	        self.stop_freq = band["maxFreqHz"]
+                self.num_ch = band["channelCount"]
+	        self.samp_rate = band["samplingRate"]
+		self.fft_size = band["fftSize"]
 
 
 
@@ -214,10 +230,9 @@ class my_top_block(gr.top_block):
     	self.event_msg['mPar']['fStop'] = self.stop_freq
     	self.event_msg['mPar']['Atten'] = self.atten
     	self.event_msg['mPar']['n'] = self.num_ch
-    	self.event_msg['mPar']['sampRate'] = self.u.get_sample_rate()
+    	self.event_msg['mPar']['sampRate'] = self.get_sample_rate()
 
     def init_flow_graph(self):
-	self.read_configuration()
 
         if not self.options.real_time:
             realtime = False
@@ -231,15 +246,16 @@ class my_top_block(gr.top_block):
                 print "Note: failed to enable realtime scheduling"
 
 
-	self.use_usrp = self.options.args.startswith("uhd")
+	self.use_usrp = self.options.args != None and self.options.args.startswith("uhd")
+        self.file_source = self.options.args != None and self.options.args.startswith("file")
+       
 
 
-        usrp_rate = self.u.get_sample_rate()
+        usrp_rate = self.get_sample_rate()
          
-        if usrp_rate != self.options.samp_rate:
-	   print "usrp_rate/options.samp_rate", usrp_rate,self.options.samp_rate
+        if usrp_rate != self.samp_rate:
            print "rate mismatch -- inserting fractional resampler"
-	   resamp = filter.fractional_resampler_cc(0.0, usrp_rate / self.options.samp_rate)
+	   resamp = filter.fractional_resampler_cc(0.0, usrp_rate / self.samp_rate)
 
 
         # Set the antenna
@@ -290,37 +306,43 @@ class my_top_block(gr.top_block):
 	self.meas_duration = meas_frames * self.fft_size / self.samp_rate
 	print "Actual measurement duration =", self.meas_duration, "s"
 
-	self.det_type = self.options.det_type
-	det = 0 if self.det_type=='avg' else 1
+	self.det_type = self.det_type
+	det = 0 if self.det_type== "MEAN" else 1
         self.stats = myblocks.bin_statistics_ff(self.num_ch, meas_frames, det)
 
 	# Divide magnitude-square by a constant to obtain power
 	# in Watts.  Assumes unit of USRP source is volts.
-	impedance = self.options.impedance   # ohms
 	#impedance = 50.0   # ohms
-	Vsq2W_dB = -10.0 * math.log10(self.fft_size * window_power * impedance)
+	Vsq2W_dB = -10.0 * math.log10(self.fft_size * window_power * 50)
+	print "VsqW_db",Vsq2W_dB
 
 	# Convert from Watts to dBm.
-	W2dBm = blocks.nlog10_ff(10, self.num_ch, 30 + Vsq2W_dB)
+	W2dBm = blocks.nlog10_ff(self.options.scale, self.num_ch, self.options.power_offset + Vsq2W_dB)
+
+	# Constant add fudge factor.
 
 	f2c = blocks.float_to_char(self.num_ch, 1.0)
-        g = self.u.get_gain_range()
-        if self.options.gain is None:
-            # if no gain was specified, use the mid-point in dB
-            self.options.gain = float(g.start()+g.stop())/2.0
+	if not self.is_file_source():
+           g = self.u.get_gain_range()
+           if self.options.gain is None:
+            	# if no gain was specified, use the mid-point in dB
+            	self.options.gain = float(g.start()+g.stop())/2.0
 
-	# TODO -- fix
-        #self.set_gain(options.gain)
-        print "gain =", self.options.gain, "dB in range (%0.1f dB, %0.1f dB)" % (float(g.start()), float(g.stop()))
-	self.atten = float(g.stop()) - self.options.gain
-	self.set_gain(self.options.gain)
+	   # TODO -- fix
+           #self.set_gain(options.gain)
+           print "gain =", self.options.gain, "dB in range (%0.1f dB, %0.1f dB)" % (float(g.start()), float(g.stop()))
+	   self.atten = float(g.stop()) - self.options.gain
+	else:
+	   self.atten = 0
+
+        self.set_gain(self.options.gain)
 
 	
         delta = long(round(getLocalUtcTimeStamp() - time.time()))
 	print "delta = ",delta
 
-	chunksize = int(self.u.get_sample_rate()*self.options.capture_duration)
-        capture_sink = myblocks.capture_sink(itemsize=gr.sizeof_gr_complex, chunksize = chunksize, samp_rate = int(self.u.get_sample_rate()), capture_dir="/tmp", mongodb_port=self.mongodb_port,\
+	chunksize = int(self.get_sample_rate()*self.options.capture_duration)
+        capture_sink = myblocks.capture_sink(itemsize=gr.sizeof_gr_complex, chunksize = chunksize, samp_rate = int(self.get_sample_rate()), capture_dir="/tmp", mongodb_port=self.mongodb_port,\
 		event_url="https://" + self.dest_host + ":" + str(443) +  "/eventstream/postCaptureEvent", time_offset = delta)
 	
 	self.initialize_message_headers()
@@ -338,6 +360,7 @@ class my_top_block(gr.top_block):
 	    self.connect(self.u, s2v)
 	    self.flow_graph_1 = [s2v]
 
+	add_const = blocks.add_const_ff(-100)
 	# Connect the blocks together.
 	self.connect(s2v, ffter, c2mag, self.aggr, self.stats, W2dBm, f2c, self.sslsocket_sink)
 	self.flow_graph_1 = self.flow_graph_1 + [ffter,c2mag,self.aggr,self.stats,W2dBm,f2c,self.sslsocket_sink]
@@ -347,28 +370,38 @@ class my_top_block(gr.top_block):
 	self.flow_graph_2 = [trigger,capture_sink]
 	self.msg_connect(trigger,"trigger",capture_sink,"capture")
 
+    def get_sample_rate(self):
+	if self.is_file_source():
+	   return self.samp_rate
+	else:
+	   return self.u.get_sample_rate()
 
-    def __init__(self,osmo,options,args):
-	print "osmo = ",osmo
+    def is_file_source(self):
+	return self.options.args != None and self.options.args.startswith("file")
+
+
+    def __init__(self,source,options,config,port):
+	print "source = ",source
 	print "options", options
+	self.init_config(config)
+	self.port = port
         self.session = requests.Session()
         self.session.mount('https://', MyAdapter())
         gr.top_block.__init__(self)
         self.flow_graph_1 = None
 	self.flow_graph_2 = None
 	self.options = options
-	self.u = osmo
-	print args
+	if not self.is_file_source():
+	   self.u = source
+	else:
+	   print "samp_rate ",self.samp_rate
+	   u = blocks.throttle(itemsize = gr.sizeof_gr_complex, samples_per_sec = 4*self.samp_rate)
+	   self.connect(source,u)
+	   self.u = u
 
-        if len(args) != 0:
-            #parser.print_help()
-            print "Warning: args present but ignored"
-            sys.exit(1)
 	self.dest_host = options.dest_host
-	self.samp_rate = options.samp_rate
-        self.fft_size = options.fft_size
 	self.sensorId = options.sensorId
-	self.det_type = options.det_type
+	self.det_type = config["streaming"]["streamingFilter"]
 	self.mongodb_port = options.mongod_port
 	self.init_flow_graph()
 
@@ -378,7 +411,8 @@ class my_top_block(gr.top_block):
 	  print "disconnecting flow graph"
 	  self.stop()
 	  self.sslsocket_sink.disconnect()
-          self.u.get_sample_rates().stop()
+	  if not self.is_file_source():
+             self.u.get_sample_rates().stop()
 	  traceback.print_exc()
 	  self.disconnect(self.u)
 	  if self.flow_graph_1 != None:
@@ -402,22 +436,41 @@ class my_top_block(gr.top_block):
         @rypte: bool
         """
 
-        print "set_freq:target_freq ", target_freq
+	if not self.is_file_source():
+        	print "set_freq:target_freq ", target_freq
         
-	#self.u.set_center_freq(target_freq + self.lo_offset)
-	self.u.set_center_freq(target_freq - self.lo_offset)
-	freq = self.u.get_center_freq()
-	self.center_freq = freq
-
-        if freq == target_freq:
-	   return True
-	else:
-           print "actual freq ", freq
-	   return False
+		#self.u.set_center_freq(target_freq + self.lo_offset)
+                self.u.set_center_freq(target_freq - self.lo_offset)
+                freq = self.u.get_center_freq()
+                self.center_freq = freq
+        	if freq == target_freq:
+	   	   return True
+	        else:
+                    print "actual freq ", freq
+	        return False
+        else:
+                self.center_freq = target_freq
+        
 
 
     def set_gain(self, gain):
-        self.u.set_gain(gain)
+	if not self.is_file_source():
+           self.u.set_gain(gain)
+	else:
+	   self.gain = gain
+
+    def set_sample_rate(self,sample_rate):
+	if self.is_file_source():
+	   self.samp_rate = sample_rate
+	else:
+	   self.u.set_sample_rate(sample_rate)
+
+    def get_sample_rate(self):
+	if self.is_file_source():
+           return self.samp_rate
+	else:
+	   return self.u.get_sample_rate()
+	
     
     def bin_freq(self, i_bin, center_freq):
         hz_per_bin = self.samp_rate / self.fft_size
@@ -461,10 +514,18 @@ def start_main_loop():
     signal.signal(signal.SIGUSR1,sigusr1_handler)
     signal.signal(signal.SIGUSR2,sigusr2_handler)
     options,args = parse_options()
-    osmo = init_osmosdr(options)
+    config,port = read_configuration(options.sensorId,options.dest_host)
+    # Reading form a file?
+    if not options.args.startswith("file"):
+       source = init_osmosdr(options,config)
+    else:
+       source = init_file_source(options)
+    
     while True:
        print "start_main_loop: starting main loop"
-       tb = my_top_block(osmo,options,args)
+       # Note -- config can change so need to re-read.
+       config,port = read_configuration(options.sensorId,options.dest_host)
+       tb = my_top_block(source,options,config,port)
        try:
           main_loop(tb)
        except KeyboardInterrupt:
