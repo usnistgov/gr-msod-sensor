@@ -320,6 +320,7 @@ class my_top_block(gr.top_block):
 
 	# Convert from Watts to dBm.
 	W2dBm = blocks.nlog10_ff(self.options.scale, self.num_ch, self.options.power_offset + Vsq2W_dB)
+	#W2dBm = blocks.nlog10_ff(self.options.scale, self.num_ch, self.options.power_offset )
 
 	# Constant add fudge factor.
 
