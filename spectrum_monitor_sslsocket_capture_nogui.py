@@ -108,6 +108,8 @@ def parse_options():
 			help="I/Q capture duration (s), default = [%default]")
 	parser.add_option("","--power-offset", type = "eng_float", default = 30,
 			help="Additive power offset. ")
+	parser.add_option("","--if-gain", type = "eng_float", default = 22,
+			help="Additive power offset. ")
 
         (options, args) = parser.parse_args()
 	return options,args
@@ -137,9 +139,9 @@ def init_osmosdr(options,config):
 	u.set_dc_offset(0,0)
        	u.set_iq_balance_mode(0, 0)
        	u.set_gain_mode(True, 0)
-       	u.set_gain(6, 0)
-       	u.set_if_gain(15, 0)
-       	u.set_bb_gain(7, 0)
+       	u.set_gain(options.gain, 0)
+       	u.set_if_gain(options.if_gain, 0)
+       	u.set_bb_gain(0, 0)
         # Walk through the sample rates of the device and pick
 	u.set_sample_rate(samp_rate)
         if u.get_sample_rate() != samp_rate:
@@ -217,7 +219,7 @@ class my_top_block(gr.top_block):
     	self.data_msg['t'] = ts
     	self.data_msg['t1'] = ts
     	# Fix up the data message in accordance with various input parameters.
-    	det = 'Average' if self.det_type == 'avg' else 'Peak'
+    	det = 'AVERAGE' if self.det_type == 'AVERAGE' else 'MAX_HOLD'
     	self.data_msg['SensorID'] = self.sensorId
     	self.data_msg['mPar']['fStart'] = self.start_freq
     	self.data_msg['mPar']['fStop'] = self.stop_freq
@@ -439,8 +441,8 @@ class my_top_block(gr.top_block):
 	if not self.is_file_source():
         	print "set_freq:target_freq ", target_freq
         
-		#self.u.set_center_freq(target_freq + self.lo_offset)
-                self.u.set_center_freq(target_freq - self.lo_offset)
+		self.u.set_center_freq(target_freq + self.lo_offset)
+                #self.u.set_center_freq(target_freq - self.lo_offset)
                 freq = self.u.get_center_freq()
                 self.center_freq = freq
         	if freq == target_freq:
