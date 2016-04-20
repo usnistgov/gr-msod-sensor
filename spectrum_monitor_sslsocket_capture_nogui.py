@@ -23,6 +23,7 @@ from gnuradio import gr, eng_notation
 from gnuradio import blocks
 from gnuradio import filter
 from gnuradio import fft
+from gnuradio import uhd
 import osmosdr
 from gnuradio.eng_option import eng_option
 from optparse import OptionParser
@@ -90,8 +91,8 @@ def parse_options():
         parser.add_option("-g", "--gain", type="eng_float", default=None,
                           help="set gain in dB (default is midpoint)")
         parser.add_option("-l", "--lo-offset", type="eng_float",
-                          default=0, metavar="Hz",
-                          help="lo_offset in Hz [default=half the sample rate]")
+                          default=None, metavar="Hz",
+                          help="lo-offset in Hz [default=half the sample rate]")
         parser.add_option("", "--real-time", action="store_true", default=False,
                           help="Attempt to enable real-time scheduling")
     	parser.add_option("-d", "--dest-host", type="string", default="",
@@ -109,7 +110,8 @@ def parse_options():
 	parser.add_option("","--power-offset", type = "eng_float", default = 30,
 			help="Additive power offset. ")
 	parser.add_option("","--if-gain", type = "eng_float", default = 22,
-			help="Additive power offset. ")
+			help="IF gain for OSMO SDR. ")
+	parser.add_option("","--source", type = "string", default = None, help = "source type -- file,uhd or osmo ")
 
         (options, args) = parser.parse_args()
 	return options,args
@@ -128,22 +130,23 @@ def init_osmosdr(options,config):
         activeBands = config["thresholds"]
         for band in activeBands.values():
 	    if band["active"]:
-	        start_freq = band["minFreqHz"]
-	        stop_freq = band["maxFreqHz"]
-                num_ch = band["channelCount"]
 	        samp_rate = band["samplingRate"]
-		fft_size = band["fftSize"]
+		break
 	u =  osmosdr.source(args=options.args)
        	u.set_freq_corr(0, 0)
        	u.set_dc_offset_mode(1, 0)
 	u.set_dc_offset(0,0)
        	u.set_iq_balance_mode(0, 0)
        	u.set_gain_mode(True, 0)
-       	u.set_gain(options.gain, 0)
+	if options.gain != None:
+       	   u.set_gain(options.gain, 0)
        	u.set_if_gain(options.if_gain, 0)
        	u.set_bb_gain(0, 0)
         # Walk through the sample rates of the device and pick
 	u.set_sample_rate(samp_rate)
+        # Set the antenna
+        if(self.options.antenna):
+           u.set_antenna(self.options.antenna)
         if u.get_sample_rate() != samp_rate:
 	    sample_rate_set = False
 	    for p in u.get_sample_rates():
@@ -156,6 +159,13 @@ def init_osmosdr(options,config):
 		print "Cannot set sample rate - exitting "
 		sys.exit(0)
 		os._exit(0)
+          
+        rate = u.get_sample_rate()
+        if samp_rate != rate:
+           print "rate mismatch -- inserting fractional resampler"
+	   resamp = filter.fractional_resampler_cc(0.0, usrp_rate / self.samp_rate)
+        else:
+           resamp = None
         try:
            u.get_sample_rates().start()
         except RuntimeError:
@@ -163,7 +173,51 @@ def init_osmosdr(options,config):
            print "Source has no sample rates (wrong device arguments?)."
            sys.exit(1)
 	   os._exit(0)
-	return u
+
+	return u,resamp
+
+def init_uhd(options,config):
+	print "init_uhd", json.dumps(config,indent=4)
+        activeBands = config["thresholds"]
+        for band in activeBands.values():
+	    if band["active"]:
+	        samp_rate = band["samplingRate"]
+		break
+	u = uhd.usrp_source(device_addr=options.args,
+                                 stream_args=uhd.stream_args('fc32'))
+	
+	# Set the subdevice spec
+        if(options.spec):
+            self.u.set_subdev_spec(options.spec, 0)
+
+        # Set the antenna
+        if(options.antenna):
+            self.u.set_antenna(options.antenna, 0)
+	print "init_uhd: setting sample rate ", samp_rate
+        u.set_samp_rate(samp_rate)
+        usrp_rate = u.get_samp_rate()
+
+        if usrp_rate != samp_rate:
+            if usrp_rate < samp_rate:
+                # create list of allowable rates
+                samp_rates = u.get_samp_rates()
+                rate_list = [0.0]*len(samp_rates)
+                for i in range(len(rate_list)):
+                    last_rate = samp_rates.pop()
+                    rate_list[len(rate_list) - 1 - i] = last_rate.start()
+                # choose next higher rate
+                rate_ind = rate_list.index(usrp_rate) + 1
+                if rate_ind < len(rate_list):
+                    u.set_samp_rate(rate_list[rate_ind])
+                    usrp_rate = u.get_samp_rate()
+                print "New actual sample rate =", usrp_rate/1e6, "MHz"
+            resamp = filter.fractional_resampler_cc(0.0, usrp_rate / samp_rate)
+        else:
+            resamp = None
+        return u,resamp
+
+
+	
 
 class MyAdapter(HTTPAdapter):
     def init_poolmanager(self, connections, maxsize, block=False):
@@ -182,7 +236,7 @@ def read_configuration(sensor_id,dest_host):
     print 'socket port =',port 
     print 'Get Sensor Config on:'+ 'https://'+dest_host+':443/sensordb/getSensorConfig/'+sensor_id
     r = requests.post('https://'+dest_host+':443/sensordb/getSensorConfig/'+sensor_id, verify=False)
-    print 'server response:', r.text
+    #print 'server response:', r.text
     json = r.json()
     return json["sensorConfig"],port
 
@@ -252,22 +306,11 @@ class my_top_block(gr.top_block):
         self.file_source = self.options.args != None and self.options.args.startswith("file")
        
 
-
-        usrp_rate = self.get_sample_rate()
          
-        if usrp_rate != self.samp_rate:
-           print "rate mismatch -- inserting fractional resampler"
-	   resamp = filter.fractional_resampler_cc(0.0, usrp_rate / self.samp_rate)
-
-
-        # Set the antenna
-        if(self.options.antenna):
-            self.u.set_antenna(self.options.antenna)
-         
-	if(self.use_usrp and self.options.lo_offset):
+	if(self.options.source == "uhd"  and self.options.lo_offset != None):
             self.lo_offset = self.options.lo_offset
-	elif self.use_usrp:
-	    self.lo_offset = usrp_rate / 2.0
+	elif self.options.source == "uhd":
+	    self.lo_offset = self.u.get_samp_rate() / 2.0
 	    print "LO offset set to", self.lo_offset/1e6, "MHz"
 	else:
 	    self.lo_offset = 0
@@ -325,7 +368,7 @@ class my_top_block(gr.top_block):
 	# Constant add fudge factor.
 
 	f2c = blocks.float_to_char(self.num_ch, 1.0)
-	if not self.is_file_source():
+	if not self.options.source == "file":
            g = self.u.get_gain_range()
            if self.options.gain is None:
             	# if no gain was specified, use the mid-point in dB
@@ -356,8 +399,8 @@ class my_top_block(gr.top_block):
 	self.sslsocket_sink = myblocks.sslsocket_sink(numpy.int8, self.sensorId, self.num_ch,self.dest_host,self.port,\
 		self.sys_msg,self.loc_msg,self.data_msg,trigger,self,os.getpid())
 
-	if usrp_rate > self.samp_rate:
-	    self.connect(self.u, resamp, s2v)
+	if self.resamp != None:
+	    self.connect(self.u, self.resamp, s2v)
 	    self.flow_graph_1 = [resamp,s2v]
 	else:
 	    self.connect(self.u, s2v)
@@ -383,7 +426,7 @@ class my_top_block(gr.top_block):
 	return self.options.args != None and self.options.args.startswith("file")
 
 
-    def __init__(self,source,options,config,port):
+    def __init__(self,source,resamp,options,config,port):
 	print "source = ",source
 	print "options", options
 	self.init_config(config)
@@ -394,6 +437,7 @@ class my_top_block(gr.top_block):
         self.flow_graph_1 = None
 	self.flow_graph_2 = None
 	self.options = options
+	self.resamp = resamp
 	if not self.is_file_source():
 	   self.u = source
 	else:
@@ -414,9 +458,10 @@ class my_top_block(gr.top_block):
 	  print "disconnecting flow graph"
 	  self.stop()
 	  self.sslsocket_sink.disconnect()
-	  if not self.is_file_source():
+	  if self.options.source == "osmo":
              self.u.get_sample_rates().stop()
-	  traceback.print_exc()
+	  elif self.options.source == "uhd":
+             self.u.stop()
 	  self.disconnect(self.u)
 	  if self.flow_graph_1 != None:
 	     apply(self.disconnect,tuple(self.flow_graph_1))
@@ -439,11 +484,10 @@ class my_top_block(gr.top_block):
         @rypte: bool
         """
 
-	if not self.is_file_source():
+	if self.options.source == "osmo":
         	print "set_freq:target_freq ", target_freq
-        
-		self.u.set_center_freq(target_freq + self.lo_offset)
-                #self.u.set_center_freq(target_freq - self.lo_offset)
+		#self.u.set_center_freq(target_freq + self.lo_offset)
+                self.u.set_center_freq(target_freq - self.lo_offset)
                 freq = self.u.get_center_freq()
                 self.center_freq = freq
         	if freq == target_freq:
@@ -451,8 +495,16 @@ class my_top_block(gr.top_block):
 	        else:
                     print "actual freq ", freq
 	        return False
+	elif self.options.source == "uhd":
+	        r = self.u.set_center_freq(uhd.tune_request(target_freq, rf_freq=(target_freq + self.lo_offset),rf_freq_policy=uhd.tune_request.POLICY_MANUAL))
+                if r:
+            	   return True
+                else:
+        	   return False
+
         else:
                 self.center_freq = target_freq
+                return true
         
 
 
@@ -463,16 +515,20 @@ class my_top_block(gr.top_block):
 	   self.gain = gain
 
     def set_sample_rate(self,sample_rate):
-	if self.is_file_source():
+	if self.options.source == "file":
 	   self.samp_rate = sample_rate
-	else:
+	elif self.options.source == "osmo":
 	   self.u.set_sample_rate(sample_rate)
+	else:
+	   self.u.set_samp_rate(sample_rate)
 
     def get_sample_rate(self):
-	if self.is_file_source():
+	if self.options.source == "file":
            return self.samp_rate
-	else:
+	elif self.options.source == "osmo":
 	   return self.u.get_sample_rate()
+	else:
+	   return self.u.get_samp_rate()
 	
     
     def bin_freq(self, i_bin, center_freq):
@@ -498,8 +554,6 @@ def main_loop(tb):
     print 'starting main loop' 
     if not tb.set_freq(tb.center_freq):
         print "Failed to set frequency to", tb.center_freq
-        #sys.exit(1)
-	#os._exit(0)
     print "Set frequency to", tb.center_freq/1e6, "MHz"
     time.sleep(0.25)
     # Start flow graph
@@ -519,16 +573,21 @@ def start_main_loop():
     options,args = parse_options()
     config,port = read_configuration(options.sensorId,options.dest_host)
     # Reading form a file?
-    if not options.args.startswith("file"):
-       source = init_osmosdr(options,config)
-    else:
+    if options.source == "osmo":
+       source,resamp = init_osmosdr(options,config)
+    elif options.source =="uhd":
+       source,resamp = init_uhd(options,config)
+    elif options.source == "file":
        source = init_file_source(options)
+       resamp = None
+    else:   
+        print "Unrecognized options"
     
     while True:
        print "start_main_loop: starting main loop"
        # Note -- config can change so need to re-read.
        config,port = read_configuration(options.sensorId,options.dest_host)
-       tb = my_top_block(source,options,config,port)
+       tb = my_top_block(source,resamp,options,config,port)
        try:
           main_loop(tb)
        except KeyboardInterrupt:
