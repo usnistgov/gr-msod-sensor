@@ -279,13 +279,14 @@ class my_top_block(gr.top_block):
     	self.data_msg['t'] = ts
     	self.data_msg['t1'] = ts
     	# Fix up the data message in accordance with various input parameters.
-    	det = 'AVERAGE' if self.det_type == 'AVERAGE' else 'MAX_HOLD'
+    	det = 'Mean' if self.det_type == 'MEAN' else 'Peak'
     	self.data_msg['SensorID'] = self.sensorId
     	self.data_msg['mPar']['fStart'] = self.start_freq
     	self.data_msg['mPar']['fStop'] = self.stop_freq
     	self.data_msg['mPar']['Atten'] = self.atten
-    	#self.data_msg['mPar']['tm'] = self.meas_duration
+	self.data_msg['mPar']['Det'] = det
     	self.data_msg['mPar']['tm'] = self.meas_interval
+    	self.data_msg['mPar']['n'] = self.num_ch
 	
     	self.event_msg['SensorID'] = self.sensorId
     	self.event_msg['mPar']['fStart'] = self.start_freq
@@ -357,7 +358,6 @@ class my_top_block(gr.top_block):
 	self.meas_duration = meas_frames * self.fft_size / self.samp_rate
 	print "Actual measurement duration =", self.meas_duration, "s"
 
-	self.det_type = self.det_type
 	det = 0 if self.det_type== "MEAN" else 1
         self.stats = myblocks.bin_statistics_ff(self.num_ch, meas_frames, det)
 
