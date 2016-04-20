@@ -179,10 +179,15 @@ def init_osmosdr(options,config):
 def init_uhd(options,config):
 	print "init_uhd", json.dumps(config,indent=4)
         activeBands = config["thresholds"]
+	samp_rate = None
         for band in activeBands.values():
 	    if band["active"]:
 	        samp_rate = band["samplingRate"]
 		break
+	if samp_rate == None:
+	   print "Could not find an active band -- check server configuration. Exiting."
+	   sys.exit(0)
+	   os._exit(0)
 	u = uhd.usrp_source(device_addr=options.args,
                                  stream_args=uhd.stream_args('fc32'))
 	
@@ -214,6 +219,7 @@ def init_uhd(options,config):
             resamp = filter.fractional_resampler_cc(0.0, usrp_rate / samp_rate)
         else:
             resamp = None
+ 	u.start()
         return u,resamp
 
 
@@ -363,7 +369,6 @@ class my_top_block(gr.top_block):
 
 	# Convert from Watts to dBm.
 	W2dBm = blocks.nlog10_ff(self.options.scale, self.num_ch, self.options.power_offset + Vsq2W_dB)
-	#W2dBm = blocks.nlog10_ff(self.options.scale, self.num_ch, self.options.power_offset )
 
 	# Constant add fudge factor.
 
@@ -423,7 +428,7 @@ class my_top_block(gr.top_block):
 	   return self.u.get_sample_rate()
 
     def is_file_source(self):
-	return self.options.args != None and self.options.args.startswith("file")
+	return self.options.source == "file"
 
 
     def __init__(self,source,resamp,options,config,port):
