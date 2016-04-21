@@ -465,8 +465,8 @@ class my_top_block(gr.top_block):
 	  self.sslsocket_sink.disconnect()
 	  if self.options.source == "osmo":
              self.u.get_sample_rates().stop()
-	  elif self.options.source == "uhd":
-             self.u.stop()
+	     #elif self.options.source == "uhd":
+             #self.u.stop()
 	  self.disconnect(self.u)
 	  if self.flow_graph_1 != None:
 	     apply(self.disconnect,tuple(self.flow_graph_1))
