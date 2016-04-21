@@ -281,16 +281,17 @@ class my_top_block(gr.top_block):
     	# Fix up the data message in accordance with various input parameters.
     	det = 'Mean' if self.det_type == 'MEAN' else 'Peak'
     	self.data_msg['SensorID'] = self.sensorId
-    	self.data_msg['mPar']['fStart'] = self.start_freq
-    	self.data_msg['mPar']['fStop'] = self.stop_freq
+	# conver to float to avoid confusing the C++ JSON library
+    	self.data_msg['mPar']['fStart'] = float(self.start_freq)
+    	self.data_msg['mPar']['fStop'] = float(self.stop_freq)
     	self.data_msg['mPar']['Atten'] = self.atten
 	self.data_msg['mPar']['Det'] = det
     	self.data_msg['mPar']['tm'] = self.meas_interval
     	self.data_msg['mPar']['n'] = self.num_ch
 	
     	self.event_msg['SensorID'] = self.sensorId
-    	self.event_msg['mPar']['fStart'] = self.start_freq
-    	self.event_msg['mPar']['fStop'] = self.stop_freq
+    	self.event_msg['mPar']['fStart'] = float(self.start_freq)
+    	self.event_msg['mPar']['fStop'] = float(self.stop_freq)
     	self.event_msg['mPar']['Atten'] = self.atten
     	self.event_msg['mPar']['n'] = self.num_ch
     	self.event_msg['mPar']['sampRate'] = self.get_sample_rate()
@@ -397,6 +398,7 @@ class my_top_block(gr.top_block):
 		event_url="https://" + self.dest_host + ":" + str(443) +  "/eventstream/postCaptureEvent", time_offset = delta)
 	
 	self.initialize_message_headers()
+	print json.dumps(self.event_msg,indent=4)
 	capture_sink.set_event_message(str(json.dumps(self.event_msg)))
 	
 	trigger = myblocks.level_capture_trigger(itemsize=gr.sizeof_gr_complex,level=-40,window_size=1024)
@@ -507,9 +509,13 @@ class my_top_block(gr.top_block):
                 else:
         	   return False
 
-        else:
+        elif self.options.source == "file":
                 self.center_freq = target_freq
-                return true
+                return True
+	else:
+		print "Unknown source -- exiting"
+		sys.exit()
+		os._exit(0)
         
 
 
