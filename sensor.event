@@ -2,7 +2,7 @@
 "Ver": "1.0.12", 
 "Sys2Detect": "LTE", 
 "SensorKey": "NaN", 
-"SensorID": "E6R16W5XS", 
+"SensorID": "UNKNOWN", 
 "mPar": {"fStart": 703970000, "fStop": 714050000, "sampRate":10e6}, 
 "Type": "Event", 
 "ByteOrder": "N/A", 

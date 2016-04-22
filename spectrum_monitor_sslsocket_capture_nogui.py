@@ -557,6 +557,7 @@ class my_top_block(gr.top_block):
 
     def read_json_from_file(self, fname):
 	f = open(fname,'r')
+	print fname
 	obj = json.load(f)
 	f.close()
         return obj
