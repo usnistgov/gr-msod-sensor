@@ -19,6 +19,7 @@ def analyze(algorithm,sensorId,timestamp,host):
        fStop  = iqsample["mPar"]["fStop"]
        centerFreq = int((fStart + fStop)/2)
        samp_rate = int(iqsample["mPar"]["sampRate"])
+       print json.dumps(iqsample, indent=4)
        capture_file = iqsample["_capture_file"]
        # cell_search_file.py -s 1.92M -f 2145M --repeat -c 19.2M /tmp/capture-1461265949
        fifoname = "/tmp/ltetrigger" 

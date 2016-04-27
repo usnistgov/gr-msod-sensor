@@ -209,21 +209,13 @@ capture_sink_impl::dump_buffer() {
     time_t universal_timestamp = ts + d_time_offset;
     mongo::BSONObjBuilder builder;
     builder.appendElements(d_event_message);
-    mongo::BSONObj data_message = builder.append("_capture_file",*d_current_capture_file)
-                                  .appendNumber("t",(long long) universal_timestamp)
-                                  .appendNumber("sample_count",(long long) d_itemcount)
+    mongo::BSONObj event_message = builder.appendNumber("t",(long long) universal_timestamp)
+                                  .appendNumber("SampleCount",(long long) d_itemcount)
                                   .obj();
 
 
-    // Insert the message into mongodb.
-    try {
-        d_mongo_client.insert("iqcapture.dataMessages",data_message);
-    } catch (mongo::DBException& e) {
-        GR_LOG_ERROR(d_debug_logger,"capture_sink_impl::Error inserting into mongodb ");
-        return false;
-    }
 #ifdef IQCAPTURE_DEBUG
-    GR_LOG_DEBUG(d_debug_logger,"capture_sink_impl::data_message " + data_message.toString());
+    GR_LOG_DEBUG(d_debug_logger,"capture_sink_impl::event_message " + event_message.toString());
 #endif
     // Send a message to MSOD indicating capture event.
     CURL *curl;
@@ -231,16 +223,16 @@ capture_sink_impl::dump_buffer() {
     curl = curl_easy_init();
     if(curl) {
        GR_LOG_DEBUG(d_debug_logger,"capture_sink_imp:: POSTING to d_event_url : " + std::string(d_event_url))
-       GR_LOG_DEBUG(d_debug_logger,"capture_sink_imp:: event_url body : " + data_message.jsonString())
-       char* message_body = new char[strlen(data_message.jsonString().c_str()) + 1];
-       strcpy(message_body,data_message.jsonString().c_str());
+       GR_LOG_DEBUG(d_debug_logger,"capture_sink_imp:: event_url body : " + event_message.jsonString())
+       char* message_body = new char[strlen(event_message.jsonString().c_str()) + 1];
+       strcpy(message_body,event_message.jsonString().c_str());
        struct curl_slist *slist=NULL;
        slist = curl_slist_append(slist, "Content-Type: application/json"); 
        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
        curl_easy_setopt(curl, CURLOPT_POST, 1); 
        curl_easy_setopt(curl, CURLOPT_URL, d_event_url);
        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, message_body);
-       curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, (long)strlen(data_message.jsonString().c_str()));
+       curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, (long)strlen(event_message.jsonString().c_str()));
        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L); // TODO -- enable this check after official cert is installed.
        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L); // TODO -- make this 2L for strict check after official cert installed.
        CURLcode res = curl_easy_perform(curl);
@@ -251,6 +243,24 @@ capture_sink_impl::dump_buffer() {
        curl_easy_cleanup(curl);
     } else {
 	GR_LOG_ERROR(d_debug_logger,"Curl initialization not successful");
+	return false;
+    }
+
+    // insert the message into the local database.
+    mongo::BSONObjBuilder builder1;
+    builder1.appendElements(d_event_message);
+    // Add the file name here -- it is not relevant to the server.
+    event_message = builder1.append("_capture_file",*d_current_capture_file)
+			          .appendNumber("t",(long long) universal_timestamp)
+                                  .appendNumber("SampleCount",(long long) d_itemcount)
+                                  .obj();
+
+
+    try {
+        d_mongo_client.insert("iqcapture.dataMessages",event_message);
+    } catch (mongo::DBException& e) {
+        GR_LOG_ERROR(d_debug_logger,"capture_sink_impl::Error inserting into mongodb ");
+        return false;
     }
     
     clear_buffer();
