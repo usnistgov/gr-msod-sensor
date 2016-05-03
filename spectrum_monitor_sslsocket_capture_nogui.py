@@ -42,6 +42,7 @@ import os
 import signal
 import traceback
 from multiprocessing import Process
+from msod_sensor import forensics
 
 import argparse
 import requests
@@ -595,6 +596,8 @@ def start_main_loop():
     else:   
         print "Unrecognized options"
     
+    scanner = Process(target = forensics.run_forensics,args=(options.sensorId,options.dest_host))
+    scanner.start()
     while True:
        print "start_main_loop: starting main loop"
        # Note -- config can change so need to re-read.
@@ -628,7 +631,12 @@ def sigusr1_handler(signo,frame):
 
 	
 if __name__ == '__main__':
-   start_main_loop()
+   try:
+     start_main_loop()
+   except:
+     print "*******************************************************"
+     print " Ensure that mongodb is running on port 33000"
+     print "*******************************************************"
    # mychild = Process(target=start_main_loop)
    # mychild.start()
    # t = ThreadClass()

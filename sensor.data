@@ -5,7 +5,6 @@
 "SensorKey": "NaN", 
 "Processed": "False", 
 "nM": -1, 
-"SensorID": "E6R16W5XS", 
 "mPar": {"tm": 1.0, "fStart": 703970000.0, "Atten": 38.0, "td": -1, "fStop": 714050000.0, "Det": "Peak", "n": 56}, 
 "Type": "Data", 
 "ByteOrder": "N/A", 
@@ -13,7 +12,7 @@
 "OL": "NaN", 
 "DataType": "Binary - int8",
 "Sensitivity": "Low", 
-"wnI": -77.0, 
+"wnI": -100.0, 
 "t1": 1432171042, 
 "mType": "FFT-Power", 
 "Ta": -1 }
