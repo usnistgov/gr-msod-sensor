@@ -113,6 +113,9 @@ def parse_options():
 	parser.add_option("","--if-gain", type = "eng_float", default = 22,
 			help="IF gain for OSMO SDR. ")
 	parser.add_option("","--source", type = "string", default = None, help = "source type -- file,uhd or osmo ")
+	parser.add_option("","--analyze", dest = "analyze", action = 'store_true',
+			help="Run analysis")
+	parser.set_defaults(analyze=False)
 
         (options, args) = parser.parse_args()
 	return options,args
@@ -596,8 +599,9 @@ def start_main_loop():
     else:   
         print "Unrecognized options"
     
-    scanner = Process(target = forensics.run_forensics,args=(options.sensorId,options.dest_host))
-    scanner.start()
+    if options.analyze:
+       scanner = Process(target = forensics.run_forensics,args=(options.sensorId,options.dest_host))
+       scanner.start()
     while True:
        print "start_main_loop: starting main loop"
        # Note -- config can change so need to re-read.
