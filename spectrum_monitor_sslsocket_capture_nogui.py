@@ -104,8 +104,6 @@ def parse_options():
 	parser.add_option("-m","--mongod-port", type = "int", default = 2017, help="Mongodb port")
         parser.add_option("", "--fft-rate", type="int", default=30,
                           help="Set FFT update rate, [default=%default]")
-        parser.add_option("", "--scale", type="eng_float", default=10.0,
-                          help="Multiplicative scale parameter for power default=[%default]")
 	parser.add_option("","--capture-duration", type="eng_float",default=3.0,
 			help="I/Q capture duration (s), default = [%default]")
 	parser.add_option("","--power-offset", type = "eng_float", default = 30,
@@ -373,7 +371,7 @@ class my_top_block(gr.top_block):
 	print "VsqW_db",Vsq2W_dB
 
 	# Convert from Watts to dBm.
-	W2dBm = blocks.nlog10_ff(self.options.scale, self.num_ch, self.options.power_offset + Vsq2W_dB)
+	W2dBm = blocks.nlog10_ff(10, self.num_ch, self.options.power_offset + Vsq2W_dB)
 
 	# Constant add fudge factor.
 
