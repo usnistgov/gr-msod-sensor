@@ -147,7 +147,7 @@ def init_osmosdr(options,config):
         # Walk through the sample rates of the device and pick
 	u.set_sample_rate(samp_rate)
         # Set the antenna
-        if(self.options.antenna):
+        if(options.antenna):
            u.set_antenna(self.options.antenna)
         if u.get_sample_rate() != samp_rate:
 	    sample_rate_set = False
@@ -595,7 +595,9 @@ def start_main_loop():
        source = init_file_source(options)
        resamp = None
     else:   
-        print "Unrecognized options"
+        print "Unrecognized options options.source = ", options.source
+	os._exit(-1)
+        
     
     if options.analyze:
        scanner = Process(target = forensics.run_forensics,args=(options.sensorId,options.dest_host))
@@ -636,6 +638,7 @@ if __name__ == '__main__':
    try:
      start_main_loop()
    except:
+     traceback.print_exc()
      print "*******************************************************"
      print " Ensure that mongodb is running on port 33000"
      print "*******************************************************"
