@@ -100,7 +100,8 @@ def parse_options():
                           help="set destination host for streaming data")
         parser.add_option("", "--skip-DC", action="store_true", default=False,
                           help="skip the DC bin when mapping channels")
-	parser.add_option("-S","--sensorId", type = "string", default = None, help="Sensor ID must be unique")
+	parser.add_option("-S","--sensorId", type = "string", default = None, help="Sensor ID -- required must be unique")
+	parser.add_option("-k","--sensorKey", type = "string", default = None, help="Sensor Key -- required")
 	parser.add_option("-m","--mongod-port", type = "int", default = 2017, help="Mongodb port")
         parser.add_option("", "--fft-rate", type="int", default=30,
                           help="Set FFT update rate, [default=%default]")
@@ -276,13 +277,16 @@ class my_top_block(gr.top_block):
     	ts = long(round(getLocalUtcTimeStamp()))
     	self.loc_msg['t'] = ts
     	self.loc_msg['SensorID'] = self.sensorId
+        self.loc_msg['SensorKey'] = self.sensorKey
     	self.sys_msg['t'] = ts
     	self.sys_msg['SensorID'] = self.sensorId
+        self.sys_msg['SensorKey'] = self.sensorKey
     	self.data_msg['t'] = ts
     	self.data_msg['t1'] = ts
     	# Fix up the data message in accordance with various input parameters.
     	det = 'Mean' if self.det_type == 'MEAN' else 'Peak'
     	self.data_msg['SensorID'] = self.sensorId
+        self.data_msg['SensorKey'] = self.sensorKey
 	# conver to float to avoid confusing the C++ JSON library
     	self.data_msg['mPar']['fStart'] = float(self.start_freq)
     	self.data_msg['mPar']['fStop'] = float(self.stop_freq)
@@ -292,6 +296,7 @@ class my_top_block(gr.top_block):
     	self.data_msg['mPar']['n'] = self.num_ch
 	
     	self.event_msg['SensorID'] = self.sensorId
+        self.event_msg['SensorKey'] = self.sensorKey
     	self.event_msg['mPar']['fStart'] = float(self.start_freq)
     	self.event_msg['mPar']['fStop'] = float(self.stop_freq)
     	self.event_msg['mPar']['Atten'] = self.atten
@@ -457,6 +462,7 @@ class my_top_block(gr.top_block):
 
 	self.dest_host = options.dest_host
 	self.sensorId = options.sensorId
+        self.sensorKey = options.sensorKey
 	self.det_type = config["streaming"]["streamingFilter"]
 	self.mongodb_port = options.mongod_port
 	self.init_flow_graph()

@@ -28,7 +28,7 @@ def analyze(algorithm,sensorId,timestamp,host):
           os.mkfifo(fifoname)  
        else:
 	  print "fifo exists"
-       p = subprocess.Popen(['python2.7', '/home/mranga/ltetrigger/gr-ltetrigger/examples/cell_search_file.py', "-f", str(centerFreq), "-s", str(samp_rate), "--fifoname", fifoname, capture_file ])
+       p = subprocess.Popen(['/usr/bin/python', '/home/mranga/ltetrigger/gr-ltetrigger/examples/cell_search_file.py', "-f", str(centerFreq), "-s", str(samp_rate), "--fifoname", fifoname, capture_file ])
        pipein = open(fifoname,"r")
        result_length = int(pipein.readline())
        result = pipein.read(result_length)
@@ -71,7 +71,7 @@ def run_forensics(sensorId,host):
                         os.mkfifo(fifoname)  
                 else:
 	                print "fifo exists"
-                p = subprocess.Popen(['python2.7', '/home/mranga/ltetrigger/gr-ltetrigger/examples/cell_search_file.py', "-f", str(centerFreq), "-s", str(samp_rate), "--fifoname", fifoname, capture_file ])
+                p = subprocess.Popen(['/usr/bin/python', '/home/mranga/ltetrigger/gr-ltetrigger/examples/cell_search_file.py', "-f", str(centerFreq), "-s", str(samp_rate), "--fifoname", fifoname, capture_file ])
                 pipein = open(fifoname,"r")
                 result_length = int(pipein.readline())
                 result = pipein.read(result_length)
