@@ -44,8 +44,8 @@ level_capture_trigger::make(size_t itemsize, int level, size_t window_size)
  */
 level_capture_trigger_impl::level_capture_trigger_impl(size_t itemsize, int level, size_t window_size)
     : gr::block("level_capture_trigger",
-                     gr::io_signature::make(1, 1, itemsize),
-                     gr::io_signature::make(1, 1, itemsize))
+                gr::io_signature::make(1, 1, itemsize),
+                gr::io_signature::make(1, 1, itemsize))
 {
     // power level in dbm -- conver to actual value.
     this->d_level = pow(10.0,(float)level/10.0);
@@ -69,8 +69,8 @@ level_capture_trigger_impl::level_capture_trigger_impl(size_t itemsize, int leve
     std::string log_level = p->get_string("LOG", "log_level", "info");
     GR_LOG_SET_LEVEL(d_debug_logger,log_level);
 #endif
-   GR_LOG_DEBUG(d_debug_logger,"level_capture_trigger::level_capture_trigger: itemsize = " + std::to_string(itemsize) + 
-	 " level = " + std::to_string(level)  + " level (energy) " +  std::to_string(this->d_level) + " window_size = " + std::to_string(window_size))
+    GR_LOG_DEBUG(d_debug_logger,"level_capture_trigger::level_capture_trigger: itemsize = " + std::to_string(itemsize) +
+                 " level = " + std::to_string(level)  + " level (energy) " +  std::to_string(this->d_level) + " window_size = " + std::to_string(window_size))
 }
 
 /*
@@ -80,10 +80,10 @@ level_capture_trigger_impl::~level_capture_trigger_impl()
 {
 }
 
- void
+void
 level_capture_trigger_impl::forecast (int noutput_items, gr_vector_int &ninput_items_required)
 {
-         ninput_items_required[0] = noutput_items;
+    ninput_items_required[0] = noutput_items;
 }
 
 bool
@@ -95,22 +95,22 @@ level_capture_trigger_impl::is_armed() {
 
 void
 level_capture_trigger_impl::arm() {
-        memset(d_armed->get_address(), 1, sizeof(int));
-        GR_LOG_DEBUG(d_debug_logger,"level_capture_trigger::arm " + std::to_string((long) this ) + " arm_flag " + std::to_string(this->is_armed()));
+    memset(d_armed->get_address(), 1, sizeof(int));
+    GR_LOG_DEBUG(d_debug_logger,"level_capture_trigger::arm " + std::to_string((long) this ) + " arm_flag " + std::to_string(this->is_armed()));
 }
 
 void
 level_capture_trigger_impl::disarm() {
-        GR_LOG_DEBUG(d_debug_logger,"level_capture_trigger::disarm " );
-        memset(d_armed->get_address(), 0, sizeof(int));
+    GR_LOG_DEBUG(d_debug_logger,"level_capture_trigger::disarm " );
+    memset(d_armed->get_address(), 0, sizeof(int));
 }
 
 
 int
 level_capture_trigger_impl::general_work (int noutput_items,
-                              gr_vector_int &ninput_items,
-                              gr_vector_const_void_star &input_items,
-                              gr_vector_void_star &output_items)
+        gr_vector_int &ninput_items,
+        gr_vector_const_void_star &input_items,
+        gr_vector_void_star &output_items)
 
 {
     const char *in = (const char *) input_items[0];
@@ -123,38 +123,38 @@ level_capture_trigger_impl::general_work (int noutput_items,
     static bool printDebug = true;
 
 
-    // Capture the window. Find the max power in the window. 
+    // Capture the window. Find the max power in the window.
     // If this power exceeds a threshold then signal.
     // GR_LOG_DEBUG(d_debug_logger,"level_capture_trigger::ninput_items " + std::to_string(noutput_items) + " itemsize " + std::to_string(d_itemsize) );
-    
+
     if (this->is_armed()) {
-	// TODO-- this assumes float32 inputs.
+        // TODO-- this assumes float32 inputs.
         for(int i = 0; i< noutput_items; i ++,input++) {
-	   float ivalue = input->real();
-	   float qvalue = input->imag();
-	   float power = ivalue*ivalue + qvalue*qvalue;
-	   this->d_power_in_window = d_power_in_window + power;
-	   this->d_window_counter++ ;
-	   if (this->d_window_counter == this->d_window_size) {
-		float average_power = d_power_in_window / d_window_size;
+            float ivalue = input->real();
+            float qvalue = input->imag();
+            float power = ivalue*ivalue + qvalue*qvalue;
+            this->d_power_in_window = d_power_in_window + power;
+            this->d_window_counter++ ;
+            if (this->d_window_counter == this->d_window_size) {
+                float average_power = d_power_in_window / d_window_size;
 #ifdef IQCAPTURE_DEBUG
-       	        GR_LOG_DEBUG(d_debug_logger,"level_capture_trigger::work average_power : " + std::to_string(average_power)) ;
+                GR_LOG_DEBUG(d_debug_logger,"level_capture_trigger::work average_power : " + std::to_string(average_power)) ;
 #endif
-		this->d_window_counter = 0;
-		this->d_power_in_window = 0;
-	        if (average_power > d_level) {
-       	           message_port_pub(pmt::mp("trigger"),pmt::intern(std::string("start")));
-       	           GR_LOG_DEBUG(d_debug_logger,"level_capture_trigger::work pub" );
-		   // One shot behavior -- TODO make this configurable.
-		   this->disarm();
-	           break;
-	       } 
-	       
-	   } 
-	}
-	this->d_logging_enabled = false;
-    } 
-      
+                this->d_window_counter = 0;
+                this->d_power_in_window = 0;
+                if (average_power > d_level) {
+                    message_port_pub(pmt::mp("trigger"),pmt::intern(std::string("start")));
+                    GR_LOG_DEBUG(d_debug_logger,"level_capture_trigger::work pub" );
+                    // One shot behavior -- TODO make this configurable.
+                    this->disarm();
+                    break;
+                }
+
+            }
+        }
+        this->d_logging_enabled = false;
+    }
+
     memcpy(out,in,byte_size);
     consume_each (noutput_items);
     return noutput_items;

@@ -96,7 +96,7 @@ iqcapture_sink_impl::capture(pmt::pmt_t msg) {
             p != this->d_capture_queue.end(); p++) {
         buffercounter += d_itemsize;
         int written = write(fd,*p,d_itemsize);
-	itemcount ++;
+        itemcount ++;
     }
     close(fd);
 #ifdef IQCAPTURE_DEBUG
@@ -178,14 +178,14 @@ iqcapture_sink_impl::work(int noutput_items,
             char* item = this->d_capture_queue.back();
             this->d_capture_queue.pop_back();
             delete item;
-	    this->d_itemcount --;
+            this->d_itemcount --;
         }
         char* item = (char*) in + buffercounter;
-	char* newitem = new char[d_itemsize];
-	memcpy(newitem,item,d_itemsize);
+        char* newitem = new char[d_itemsize];
+        memcpy(newitem,item,d_itemsize);
         this->d_capture_queue.push_front(newitem);
-	buffercounter += this->d_itemsize;
-	this->d_itemcount++;
+        buffercounter += this->d_itemsize;
+        this->d_itemcount++;
     }
     return noutput_items;
 }

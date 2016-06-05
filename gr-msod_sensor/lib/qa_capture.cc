@@ -30,7 +30,7 @@
 CppUnit::TestSuite *
 qa_capture::suite()
 {
-  CppUnit::TestSuite *s = new CppUnit::TestSuite("capture");
+    CppUnit::TestSuite *s = new CppUnit::TestSuite("capture");
 
-  return s;
+    return s;
 }

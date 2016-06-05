@@ -30,7 +30,7 @@
 CppUnit::TestSuite *
 qa_msod_sensor::suite()
 {
-  CppUnit::TestSuite *s = new CppUnit::TestSuite("msod_sensor");
+    CppUnit::TestSuite *s = new CppUnit::TestSuite("msod_sensor");
 
-  return s;
+    return s;
 }

@@ -43,8 +43,8 @@ dummy_capture_trigger::make(size_t itemsize)
  */
 dummy_capture_trigger_impl::dummy_capture_trigger_impl(size_t itemsize)
     : gr::block("dummy_capture_trigger",
-                     gr::io_signature::make(1, 1, itemsize),
-                     gr::io_signature::make(1, 1, itemsize))
+                gr::io_signature::make(1, 1, itemsize),
+                gr::io_signature::make(1, 1, itemsize))
 {
     this->d_itemcount = 0;
     this->d_itemsize = itemsize;
@@ -69,10 +69,10 @@ dummy_capture_trigger_impl::~dummy_capture_trigger_impl()
 {
 }
 
- void
+void
 dummy_capture_trigger_impl::forecast (int noutput_items, gr_vector_int &ninput_items_required)
 {
-         ninput_items_required[0] = noutput_items;
+    ninput_items_required[0] = noutput_items;
 }
 
 bool
@@ -84,22 +84,22 @@ dummy_capture_trigger_impl::is_armed() {
 
 void
 dummy_capture_trigger_impl::arm() {
-        memset(d_armed->get_address(), 1, sizeof(int));
-        GR_LOG_DEBUG(d_debug_logger,"dummy_capture_trigger::arm " + std::to_string((long) this ) + " arm_flag " + std::to_string(this->is_armed()));
+    memset(d_armed->get_address(), 1, sizeof(int));
+    GR_LOG_DEBUG(d_debug_logger,"dummy_capture_trigger::arm " + std::to_string((long) this ) + " arm_flag " + std::to_string(this->is_armed()));
 }
 
 void
 dummy_capture_trigger_impl::disarm() {
-        GR_LOG_DEBUG(d_debug_logger,"dummy_capture_trigger::disarm " );
-        memset(d_armed->get_address(), 0, sizeof(int));
+    GR_LOG_DEBUG(d_debug_logger,"dummy_capture_trigger::disarm " );
+    memset(d_armed->get_address(), 0, sizeof(int));
 }
 
 
 int
 dummy_capture_trigger_impl::general_work (int noutput_items,
-                              gr_vector_int &ninput_items,
-                              gr_vector_const_void_star &input_items,
-                              gr_vector_void_star &output_items)
+        gr_vector_int &ninput_items,
+        gr_vector_const_void_star &input_items,
+        gr_vector_void_star &output_items)
 
 {
     const char *in = (const char *) input_items[0];
@@ -107,12 +107,12 @@ dummy_capture_trigger_impl::general_work (int noutput_items,
     unsigned int byte_size = noutput_items * this->d_itemsize;
     int buffercounter = 0;
     this->d_itemcount = this->d_itemcount + noutput_items;
-    
+
     // Just signal the capture block (TODO -- different policies go here).
     if (this->is_armed()) {
-       	GR_LOG_DEBUG(d_debug_logger,"dummy_capture_trigger::work pub" );
-       	message_port_pub(pmt::mp("trigger"),pmt::intern(std::string("start")));
-	this->disarm();
+        GR_LOG_DEBUG(d_debug_logger,"dummy_capture_trigger::work pub" );
+        message_port_pub(pmt::mp("trigger"),pmt::intern(std::string("start")));
+        this->disarm();
     }
 
     in = (char*)input_items[0];

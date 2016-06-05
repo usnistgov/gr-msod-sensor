@@ -39,56 +39,56 @@
 #endif
 
 namespace gr {
-  namespace msod_sensor {
+namespace msod_sensor {
 
-    file_descriptor_sink::sptr
-    file_descriptor_sink::make(size_t itemsize, int fd)
-    {
-      return gnuradio::get_initial_sptr
-        (new file_descriptor_sink_impl(itemsize, fd));
-    }
+file_descriptor_sink::sptr
+file_descriptor_sink::make(size_t itemsize, int fd)
+{
+    return gnuradio::get_initial_sptr
+           (new file_descriptor_sink_impl(itemsize, fd));
+}
 
-    file_descriptor_sink_impl::file_descriptor_sink_impl(size_t itemsize, int fd)
-  : gr::sync_block("file_descriptor_sink",
-                  gr::io_signature::make(1, 1, itemsize),
-                  gr::io_signature::make(0, 0, 0)),
+file_descriptor_sink_impl::file_descriptor_sink_impl(size_t itemsize, int fd)
+    : gr::sync_block("file_descriptor_sink",
+                     gr::io_signature::make(1, 1, itemsize),
+                     gr::io_signature::make(0, 0, 0)),
     d_itemsize(itemsize), d_fd(fd)
-    {
-    }
+{
+}
 
-    file_descriptor_sink_impl::~file_descriptor_sink_impl()
-    {
-      close(d_fd);
-    }
+file_descriptor_sink_impl::~file_descriptor_sink_impl()
+{
+    close(d_fd);
+}
 
-    int
-    file_descriptor_sink_impl::work(int noutput_items,
-                                    gr_vector_const_void_star &input_items,
-                                    gr_vector_void_star &output_items)
-    {
-      char *inbuf = (char*)input_items[0];
-      unsigned long byte_size = noutput_items * d_itemsize;
+int
+file_descriptor_sink_impl::work(int noutput_items,
+                                gr_vector_const_void_star &input_items,
+                                gr_vector_void_star &output_items)
+{
+    char *inbuf = (char*)input_items[0];
+    unsigned long byte_size = noutput_items * d_itemsize;
 
-      while(byte_size > 0) {
+    while(byte_size > 0) {
         ssize_t r;
 
         r = write(d_fd, inbuf, byte_size);
         if(r == -1) {
-         if(errno == EINTR)
-           continue;
-         else {
-           perror("file_descriptor_sink");
-           return -1;    // indicate we're done
-         }
+            if(errno == EINTR)
+                continue;
+            else {
+                perror("file_descriptor_sink");
+                return -1;    // indicate we're done
+            }
         }
         else {
-          byte_size -= r;
-          inbuf += r;
+            byte_size -= r;
+            inbuf += r;
         }
-      }
-
-      return noutput_items;
     }
 
-  } /* namespace msod_sensor */
+    return noutput_items;
+}
+
+} /* namespace msod_sensor */
 } /* namespace gr */
