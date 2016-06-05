@@ -17,7 +17,7 @@
 # along with this software; see the file COPYING.  If not, write to
 # the Free Software Foundation, Inc., 51 Franklin Street,
 # Boston, MA 02110-1301, USA.
-# 
+#
 
 import numpy
 from gnuradio import gr
@@ -35,50 +35,46 @@ import forensics
 from threading import Thread
 
 
-def command_handler(trigger,sock,top_block,pid,host,sensorId):
-	print "command_handler : starting "  + str(pid)
-	while True:
-		try :
-			command = sock.recv(1024)
-			print "command = " , str(command)
-			commandJson = json.loads(str(command))
-		        print commandJson
-			print ">>>>>>>>>>>>>>> Got something ",json.dumps(commandJson,indent=4)
-			if commandJson["command"] == "arm" :
-			   print "Arming trigger"
-			   trigger.arm()
-			   if "triggerParams" in commandJson:
-				triggerParams = commandJson["triggerParams"]
-				trigger.setTriggerParams(json.dumps(triggerParams))
-			elif commandJson["command"] == "disarm" :
-			   trigger.disarm()
-                        elif commandJson["command"] == "analyze":
-			    algorithm = commandJson["algorithm"]
-                            timestamp = commandJson["timestamp"]
-	                    commandThread = Process(target=forensics.analyze,args=(algorithm,sensorId,timestamp,host))
-                            commandThread.start()
-                        elif commandJson["command"] == "garbage_collect":
-                            timestamp = commandJson["timestamp"]
-	                    commandThread = Process(target=forensics.garbage_collect,args=(sensorId,timestamp))
-                            commandThread.start()
-			else:
-                           try:
-			      os.kill(pid,signal.SIGUSR1)
-			      sock.close()
-                           except:
-                              print "Process not found ",str(pid)
-			   sys.exit(0)
-			   os._exit(0)
-		except:
-			traceback.print_exc()
-                        try:
-			   os.kill(pid,signal.SIGUSR1)
-                        except:
-                           print "Process not found ",str(pid)
-			sys.exit(0)
-			os._exit(0)
-	
-		
+def command_handler(trigger, sock, top_block, pid, host, sensorId):
+    print "command_handler : starting " + str(pid)
+    while True:
+        try:
+            command = sock.recv(1024)
+            print "command = ", str(command)
+            commandJson = json.loads(str(command))
+            print commandJson
+            print ">>>>>>>>>>>>>>> Got something ", json.dumps(commandJson,
+                                                               indent=4)
+            if commandJson["command"] == "arm":
+                print "Arming trigger"
+                trigger.arm()
+                if "triggerParams" in commandJson:
+                    triggerParams = commandJson["triggerParams"]
+                    trigger.setTriggerParams(json.dumps(triggerParams))
+            elif commandJson["command"] == "disarm":
+                trigger.disarm()
+            elif commandJson["command"] == "garbage_collect":
+                timestamp = commandJson["timestamp"]
+                commandThread = Process(target=forensics.garbage_collect,
+                                        args=(sensorId, timestamp))
+                commandThread.start()
+            else:
+                try:
+                    os.kill(pid, signal.SIGUSR1)
+                    sock.close()
+                except:
+                    print "Process not found ", str(pid)
+                sys.exit(0)
+                os._exit(0)
+        except:
+            traceback.print_exc()
+            try:
+                os.kill(pid, signal.SIGUSR1)
+            except:
+                print "Process not found ", str(pid)
+            sys.exit(0)
+            os._exit(0)
+
 
 class sslsocket_sink(gr.sync_block):
     """
@@ -97,66 +93,71 @@ class sslsocket_sink(gr.sync_block):
     
    
     """
-    def __init__(self, dtype,sensorId, nitems_per_block, host, port, sys_msg, loc_msg, data_msg, trigger, top_block, pid):
-        gr.sync_block.__init__(self,
-            name="sslsocket_sink",
-            in_sig=[(dtype, nitems_per_block)],
-            out_sig=None)
-	self.host = host
-	self.port = port
-	self.sensorId = sensorId
-   	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	self.unwrapped_socket = sock
-	sock.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER,struct.pack('ii', 1, 0))
-  	sock.connect((self.host,self.port))
-        #self.sock =  ssl.wrap_socket(sock)
-	self.sock =  ssl.wrap_socket(sock,ssl_version = ssl.PROTOCOL_SSLv3)
-	self.sys_msg = sys_msg
-	self.send_obj(sys_msg)
-	self.loc_msg = loc_msg
-	self.send_obj(loc_msg)
-	self.data_msg = data_msg
-	self.send_obj(data_msg)
-	commandThread = Process(target=command_handler,args=(trigger,self.sock,top_block,pid,host,sensorId))
-	commandThread.start()
 
-    def reconnect(self,fStart,fStop):
-	self.sock.close()
-   	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	self.unwrapped_socket = sock
-	sock.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER,struct.pack('ii', 1, 0))
-  	sock.connect((self.host,self.port))
-        self.sock =  ssl.wrap_socket(sock)
-	self.send_obj(self.sys_msg)
-	self.send_obj(self.loc_msg)
-	self.send_obj(self.data_msg)
-	commandThread = Process(target=command_handler,args=(trigger,self.sock,top_block,pid,host,sensorId))
-	commandThread.start()
-        
+    def __init__(self, dtype, sensorId, nitems_per_block, host, port, sys_msg,
+                 loc_msg, data_msg, trigger, top_block, pid):
+        gr.sync_block.__init__(self,
+                               name="sslsocket_sink",
+                               in_sig=[(dtype, nitems_per_block)],
+                               out_sig=None)
+        self.host = host
+        self.port = port
+        self.sensorId = sensorId
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.unwrapped_socket = sock
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, struct.pack('ii',
+                                                                         1, 0))
+        sock.connect((self.host, self.port))
+        #self.sock =  ssl.wrap_socket(sock)
+        self.sock = ssl.wrap_socket(sock, ssl_version=ssl.PROTOCOL_SSLv3)
+        self.sys_msg = sys_msg
+        self.send_obj(sys_msg)
+        self.loc_msg = loc_msg
+        self.send_obj(loc_msg)
+        self.data_msg = data_msg
+        self.send_obj(data_msg)
+        commandThread = Process(target=command_handler,
+                                args=(trigger, self.sock, top_block, pid, host,
+                                      sensorId))
+        commandThread.start()
+
+    def reconnect(self, fStart, fStop):
+        self.sock.close()
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.unwrapped_socket = sock
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, struct.pack('ii',
+                                                                         1, 0))
+        sock.connect((self.host, self.port))
+        self.sock = ssl.wrap_socket(sock)
+        self.send_obj(self.sys_msg)
+        self.send_obj(self.loc_msg)
+        self.send_obj(self.data_msg)
+        commandThread = Process(target=command_handler,
+                                args=(trigger, self.sock, top_block, pid, host,
+                                      sensorId))
+        commandThread.start()
 
     def send_obj(self, obj):
-	msg = json.dumps(obj)
-	frmt = "=%ds" % len(msg)
-	packed_msg = struct.pack(frmt, msg)
-	ascii_hdr = "%d\r" % len(packed_msg)
-	self.sock.send(ascii_hdr)
-	self.sock.send(packed_msg)
+        msg = json.dumps(obj)
+        frmt = "=%ds" % len(msg)
+        packed_msg = struct.pack(frmt, msg)
+        ascii_hdr = "%d\r" % len(packed_msg)
+        self.sock.send(ascii_hdr)
+        self.sock.send(packed_msg)
 
     def disconnect(self):
-	print "ssl_socket_sink: disconnect"
-	self.sock.close()
-
+        print "ssl_socket_sink: disconnect"
+        self.sock.close()
 
     def work(self, input_items, output_items):
 
         in0 = input_items[0]
         num_input_items = len(in0)
-	for i in range(num_input_items):
-	    try:
-            	self.sock.send(in0[i])
-	    except:
-		self.unwrapped_socket.close()
-		self.sock.close()
-		return -1
+        for i in range(num_input_items):
+            try:
+                self.sock.send(in0[i])
+            except:
+                self.unwrapped_socket.close()
+                self.sock.close()
+                return -1
         return num_input_items
-

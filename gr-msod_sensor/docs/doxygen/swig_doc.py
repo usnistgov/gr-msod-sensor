@@ -39,6 +39,7 @@ def py_name(name):
     bits = name.split('_')
     return '_'.join(bits[1:])
 
+
 def make_name(name):
     bits = name.split('_')
     return bits[0] + '_make_' + '_'.join(bits[1:])
@@ -85,6 +86,8 @@ def combine_descriptions(obj):
 
 
 entry_templ = '%feature("docstring") {name} "{docstring}"'
+
+
 def make_entry(obj, name=None, templ="{description}", description=None):
     """
     Create a docstring entry for a swig interface file.
@@ -97,7 +100,7 @@ def make_entry(obj, name=None, templ="{description}", description=None):
             used as the description instead of extracting it from obj.
     """
     if name is None:
-        name=obj.name()
+        name = obj.name()
     if "operator " in name:
         return ''
     if description is None:
@@ -105,10 +108,8 @@ def make_entry(obj, name=None, templ="{description}", description=None):
     docstring = templ.format(description=description)
     if not docstring:
         return ''
-    return entry_templ.format(
-        name=name,
-        docstring=docstring,
-        )
+    return entry_templ.format(name=name,
+                              docstring=docstring, )
 
 
 def make_func_entry(func, name=None, description=None, params=None):
@@ -129,7 +130,9 @@ def make_func_entry(func, name=None, description=None, params=None):
     else:
         sig = "Params: (NONE)"
     templ = "{description}\n\n" + sig
-    return make_entry(func, name=name, templ=utoascii(templ),
+    return make_entry(func,
+                      name=name,
+                      templ=utoascii(templ),
                       description=description)
 
 
@@ -176,7 +179,8 @@ def make_block_entry(di, block):
     output = []
     output.append(make_class_entry(block, description=super_description))
     creator = block.get_member(block.name(), DoxyFunction)
-    output.append(make_func_entry(make_func, description=super_description,
+    output.append(make_func_entry(make_func,
+                                  description=super_description,
                                   params=creator.params))
     return "\n\n".join(output)
 
@@ -207,7 +211,8 @@ def make_swig_interface_file(di, swigdocfilename, custom_output=None):
 
     # Create docstrings for functions
     # Don't include the make functions since they have already been dealt with.
-    funcs = [f for f in di.in_category(DoxyFunction) if f.name() not in make_funcs]
+    funcs = [f for f in di.in_category(DoxyFunction)
+             if f.name() not in make_funcs]
     for f in funcs:
         try:
             output.append(make_func_entry(f))
@@ -216,7 +221,8 @@ def make_swig_interface_file(di, swigdocfilename, custom_output=None):
 
     # Create docstrings for classes
     block_names = [block.name() for block in blocks]
-    klasses = [k for k in di.in_category(DoxyClass) if k.name() not in block_names]
+    klasses = [k for k in di.in_category(DoxyClass)
+               if k.name() not in block_names]
     for k in klasses:
         try:
             output.append(make_class_entry(k))
@@ -231,6 +237,7 @@ def make_swig_interface_file(di, swigdocfilename, custom_output=None):
     swig_doc = file(swigdocfilename, 'w')
     swig_doc.write(output)
     swig_doc.close()
+
 
 if __name__ == "__main__":
     # Parse command line options and set up doxyxml.

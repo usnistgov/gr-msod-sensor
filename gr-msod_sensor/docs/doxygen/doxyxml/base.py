@@ -34,7 +34,6 @@ from generated import compound
 
 
 class Base(object):
-
     class Duplicate(StandardError):
         pass
 

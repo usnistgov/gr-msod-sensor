@@ -17,7 +17,6 @@
 #
 
 # The presence of this file turns this directory into a Python package
-
 '''
 This is the GNU Radio MYBLOCKS module. Place your Python package
 description here (python/__init__.py).
@@ -31,15 +30,14 @@ try:
     from dl import RTLD_GLOBAL as _RTLD_GLOBAL
 except ImportError:
     try:
-	from DLFCN import RTLD_GLOBAL as _RTLD_GLOBAL
+        from DLFCN import RTLD_GLOBAL as _RTLD_GLOBAL
     except ImportError:
-	pass
+        pass
 
 if _RTLD_GLOBAL != 0:
     _dlopenflags = sys.getdlopenflags()
-    sys.setdlopenflags(_dlopenflags|_RTLD_GLOBAL)
+    sys.setdlopenflags(_dlopenflags | _RTLD_GLOBAL)
 # ----------------------------------------------------------------
-
 
 # import swig generated symbols into the msod_sensor namespace
 from msod_sensor_swig import *
@@ -52,5 +50,5 @@ from sslsocket_sink import sslsocket_sink
 # ----------------------------------------------------------------
 # Tail of workaround
 if _RTLD_GLOBAL != 0:
-    sys.setdlopenflags(_dlopenflags)      # Restore original flags
+    sys.setdlopenflags(_dlopenflags)  # Restore original flags
 # ----------------------------------------------------------------

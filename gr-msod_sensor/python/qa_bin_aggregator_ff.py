@@ -17,49 +17,53 @@
 # along with this software; see the file COPYING.  If not, write to
 # the Free Software Foundation, Inc., 51 Franklin Street,
 # Boston, MA 02110-1301, USA.
-# 
+#
 
 from gnuradio import gr, gr_unittest
 from gnuradio import blocks
 import msod_sensor_swig as msod_sensor
 
-class qa_bin_aggregator_ff (gr_unittest.TestCase):
 
-    def setUp (self):
-        self.tb = gr.top_block ()
+class qa_bin_aggregator_ff(gr_unittest.TestCase):
+    def setUp(self):
+        self.tb = gr.top_block()
 
-    def tearDown (self):
+    def tearDown(self):
         self.tb = None
 
-    def test_001_t (self):
+    def test_001_t(self):
         # set up fg
-	src_data = (1, 2.1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20)
-	output_bin_index = (0, 1, 1, 2, 2, 2, 3, 3, 4, 4, 0, 5, 5, 6, 6, 6, 7, 7, 8, 8)
-	expected_result = (5.1, 15, 15, 19, 25, 45, 35, 39)
-	src = blocks.vector_source_f(src_data)
-	s2v = blocks.stream_to_vector(gr.sizeof_float, 20)
-	aggr = msod_sensor.bin_aggregator_ff(20, 8, output_bin_index)
-	dst = blocks.vector_sink_f(8)
-	self.tb.connect(src, s2v, aggr, dst)
-        self.tb.run ()
+        src_data = (1, 2.1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+                    17, 18, 19, 20)
+        output_bin_index = (0, 1, 1, 2, 2, 2, 3, 3, 4, 4, 0, 5, 5, 6, 6, 6, 7,
+                            7, 8, 8)
+        expected_result = (5.1, 15, 15, 19, 25, 45, 35, 39)
+        src = blocks.vector_source_f(src_data)
+        s2v = blocks.stream_to_vector(gr.sizeof_float, 20)
+        aggr = msod_sensor.bin_aggregator_ff(20, 8, output_bin_index)
+        dst = blocks.vector_sink_f(8)
+        self.tb.connect(src, s2v, aggr, dst)
+        self.tb.run()
         # check data
-	result_data = dst.data()
-	self.assertFloatTuplesAlmostEqual(expected_result, result_data, 6)
+        result_data = dst.data()
+        self.assertFloatTuplesAlmostEqual(expected_result, result_data, 6)
 
-    def test_002_t (self):
+    def test_002_t(self):
         # set up fg
-	src_data = (1, 2.1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20)
-	output_bin_index = (1, 1, 1, 2, 2, 0, 3, 3, 4, 4)
-	expected_result = (6.1, 9, 15, 19, 36, 29, 35, 39)
-	src = blocks.vector_source_f(src_data)
-	s2v = blocks.stream_to_vector(gr.sizeof_float, 10)
-	aggr = msod_sensor.bin_aggregator_ff(10, 4, output_bin_index)
-	dst = blocks.vector_sink_f(4)
-	self.tb.connect(src, s2v, aggr, dst)
-        self.tb.run ()
+        src_data = (1, 2.1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+                    17, 18, 19, 20)
+        output_bin_index = (1, 1, 1, 2, 2, 0, 3, 3, 4, 4)
+        expected_result = (6.1, 9, 15, 19, 36, 29, 35, 39)
+        src = blocks.vector_source_f(src_data)
+        s2v = blocks.stream_to_vector(gr.sizeof_float, 10)
+        aggr = msod_sensor.bin_aggregator_ff(10, 4, output_bin_index)
+        dst = blocks.vector_sink_f(4)
+        self.tb.connect(src, s2v, aggr, dst)
+        self.tb.run()
         # check data
-	result_data = dst.data()
-	self.assertFloatTuplesAlmostEqual(expected_result, result_data, 6)
+        result_data = dst.data()
+        self.assertFloatTuplesAlmostEqual(expected_result, result_data, 6)
+
 
 if __name__ == '__main__':
     gr_unittest.run(qa_bin_aggregator_ff, "qa_bin_aggregator_ff.xml")

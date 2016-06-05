@@ -17,51 +17,55 @@
 # along with this software; see the file COPYING.  If not, write to
 # the Free Software Foundation, Inc., 51 Franklin Street,
 # Boston, MA 02110-1301, USA.
-# 
+#
 
 from gnuradio import gr, gr_unittest
 from gnuradio import blocks
 import msod_sensor_swig as msod_sensor
 
-class qa_threshold_timestamp (gr_unittest.TestCase):
 
-    def setUp (self):
-        self.tb = gr.top_block ()
+class qa_threshold_timestamp(gr_unittest.TestCase):
+    def setUp(self):
+        self.tb = gr.top_block()
 
-    def tearDown (self):
+    def tearDown(self):
         self.tb = None
 
-    def test_001_t (self):
+    def test_001_t(self):
         # set up fg
-	src_data = (0, 0, 1, 0, 0, 1.0, 1, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 3, 0, 0, 0, 0, 1, 0, 0)
-	src = blocks.vector_source_f(src_data)
-	f2c = blocks.float_to_complex(1)
-	s2v = blocks.stream_to_vector(gr.sizeof_gr_complex, 5)
-	f = open('/tmp/threshold_timestamp_test001.out', 'w')
-	tts = msod_sensor.threshold_timestamp(5, gr.sizeof_gr_complex, 0, 6.0, f.fileno())
-	ns = blocks.null_sink(5 * gr.sizeof_float)
-	self.tb.connect(src, f2c, s2v, tts, ns)
-        self.tb.run ()
-	f.close()
-        # check data
-	# look for 1 line of 'Current time' written to
-        # file 'threshold_timestamp_test001.out'
+        src_data = (0, 0, 1, 0, 0, 1.0, 1, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 3, 0,
+                    0, 0, 0, 1, 0, 0)
+        src = blocks.vector_source_f(src_data)
+        f2c = blocks.float_to_complex(1)
+        s2v = blocks.stream_to_vector(gr.sizeof_gr_complex, 5)
+        f = open('/tmp/threshold_timestamp_test001.out', 'w')
+        tts = msod_sensor.threshold_timestamp(5, gr.sizeof_gr_complex, 0, 6.0,
+                                              f.fileno())
+        ns = blocks.null_sink(5 * gr.sizeof_float)
+        self.tb.connect(src, f2c, s2v, tts, ns)
+        self.tb.run()
+        f.close()
+    # check data
+    # look for 1 line of 'Current time' written to
+    # file 'threshold_timestamp_test001.out'
 
-    def test_002_t (self):
+    def test_002_t(self):
         # set up fg
-	src_data = (0, 0, 1, 0, 0, 1.0, 1, 2, 1, 1, 0, 0, 1, 0, 0, 0, 0, 3, 0, 0, 0, 0, 1, 0, 0)
-	src = blocks.vector_source_f(src_data)
-	f2c = blocks.float_to_char()
-	s2v = blocks.stream_to_vector(gr.sizeof_char, 5)
-	f = open('/tmp/threshold_timestamp_test002.out', 'w')
-	tts = msod_sensor.threshold_timestamp(5, gr.sizeof_char, 1, 1.5, f.fileno())
-	ns = blocks.null_sink(5 * gr.sizeof_float)
-	self.tb.connect(src, f2c, s2v, tts, ns)
-        self.tb.run ()
-	f.close()
-        # check data
-	# look for 1 line of 'Current time' written to
-        # file 'threshold_timestamp_test002.out'
+        src_data = (0, 0, 1, 0, 0, 1.0, 1, 2, 1, 1, 0, 0, 1, 0, 0, 0, 0, 3, 0,
+                    0, 0, 0, 1, 0, 0)
+        src = blocks.vector_source_f(src_data)
+        f2c = blocks.float_to_char()
+        s2v = blocks.stream_to_vector(gr.sizeof_char, 5)
+        f = open('/tmp/threshold_timestamp_test002.out', 'w')
+        tts = msod_sensor.threshold_timestamp(5, gr.sizeof_char, 1, 1.5,
+                                              f.fileno())
+        ns = blocks.null_sink(5 * gr.sizeof_float)
+        self.tb.connect(src, f2c, s2v, tts, ns)
+        self.tb.run()
+        f.close()
+    # check data
+    # look for 1 line of 'Current time' written to
+    # file 'threshold_timestamp_test002.out'
 
 
 if __name__ == '__main__':
