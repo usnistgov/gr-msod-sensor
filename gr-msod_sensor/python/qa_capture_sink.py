@@ -100,16 +100,16 @@ class qa_capture_sink(gr_unittest.TestCase):
         self.tb.connect(self.u, self.throttle)
         self.chunksize = 500
         self.itemsize = gr.sizeof_float
-        msodHost = os.environ.get("MSOD_WEB_HOST")
+
         self.capture_sink = capture.capture_sink(
             itemsize=self.itemsize,
             chunksize=self.chunksize,
-            samp_rate=10e6,
+            samp_rate=10000000,
             capture_dir="/tmp",
             mongodb_port=MONGODB_PORT,
-            event_url="https://" + msodHost + ":" + str(443) +
-            "/eventstream/postCaptureEvent",
+            event_url="https://" + os.environ.get("MSOD_WEB_HOST") + ":" + str(443) + "/eventstream/postCaptureEvent",
             time_offset=0)
+
         self.tb.connect(self.throttle, self.capture_sink)
 
     def tearDown(self):
@@ -152,7 +152,6 @@ class qa_capture_sink(gr_unittest.TestCase):
 
 if __name__ == '__main__':
     global mongoclient
-    global MONGODB_PORT
     mongoclient = pymongo.MongoClient("127.0.0.1", MONGODB_PORT)
     mongoclient.iqcapture.dataMessages.drop()
     gr_unittest.run(qa_capture_sink, "qa_capture_sink.xml")

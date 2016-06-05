@@ -467,8 +467,13 @@ class my_top_block(gr.top_block):
         print "delta = ", delta
 
         chunksize = int(self.get_sample_rate() * self.options.capture_duration)
-        capture_sink = myblocks.capture_sink(itemsize=gr.sizeof_gr_complex, chunksize = chunksize, samp_rate = int(self.get_sample_rate()), capture_dir="/tmp", mongodb_port=self.mongodb_port,\
-  event_url="https://" + self.dest_host + ":" + str(443) +  "/eventstream/postCaptureEvent", time_offset = delta)
+        capture_sink = myblocks.capture_sink(itemsize=gr.sizeof_gr_complex, 
+               chunksize = chunksize, 
+               samp_rate = int(self.get_sample_rate()), 
+               capture_dir="/tmp", 
+               mongodb_port=self.mongodb_port,
+               event_url="https://" + self.dest_host + ":" + str(443) +  "/eventstream/postCaptureEvent", 
+               time_offset = delta)
 
         self.initialize_message_headers()
         print json.dumps(self.event_msg, indent=4)
