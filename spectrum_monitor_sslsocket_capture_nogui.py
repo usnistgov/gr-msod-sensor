@@ -441,10 +441,10 @@ class my_top_block(gr.top_block):
         print "VsqW_db", Vsq2W_dB
 
         # Convert from Watts to dBm.
+        # Constant add fudge factor.
         W2dBm = blocks.nlog10_ff(10, self.num_ch,
                                  self.options.power_offset + Vsq2W_dB)
 
-        # Constant add fudge factor.
 
         f2c = blocks.float_to_char(self.num_ch, 1.0)
         if not self.options.source == "file":
@@ -486,6 +486,7 @@ class my_top_block(gr.top_block):
         self.sslsocket_sink = myblocks.sslsocket_sink(numpy.int8, self.sensorId, self.num_ch,self.dest_host,self.port,\
          self.sys_msg,self.loc_msg,self.data_msg,trigger,self,os.getpid())
 
+        #TODO -- add the calibration block after self.u
         if self.resamp != None:
             self.connect(self.u, self.resamp, s2v)
             self.flow_graph_1 = [resamp, s2v]
