@@ -153,8 +153,8 @@ def parse_options():
     parser.add_option("",
                       "--power-offset",
                       type="eng_float",
-                      default=30,
-                      help="Additive power offset for calibration. default = [%default] ")
+                      default=1,
+                      help="Additive power offset for calibration (linear NOT dB). default = [%default] ")
     parser.add_option("",
                       "--if-gain",
                       type="eng_float",
@@ -387,6 +387,8 @@ class my_top_block(gr.top_block):
         else:
             self.lo_offset = 0
 
+        #Calibrate dBm (add self.options.power_offset)
+	power_cal = blocks.multiply_const_cc(self.options.power_offset)
         s2v = blocks.stream_to_vector(gr.sizeof_gr_complex, self.fft_size)
 
         mywindow = filter.window.blackmanharris(self.fft_size)
@@ -440,11 +442,14 @@ class my_top_block(gr.top_block):
         print "VsqW_db", Vsq2W_dB
 
         # Convert from Watts to dBm.
-        # Constant add fudge factor.
-        W2dBm = blocks.nlog10_ff(10, self.num_ch,
-                                 self.options.power_offset + Vsq2W_dB)
+        W2dBm = blocks.nlog10_ff(10,self.num_ch, Vsq2W_dB + 30) # 0dBW = 30dBm, so +30
+        #Constant add fudge factor (moved to power calculation)
+        #W2dBm = blocks.nlog10_ff(10, self.num_ch, self.options.power_offset + Vsq2W_dB)
+	
 
 
+	#print "Calibrated dBm", dBm_cal
+        
         f2c = blocks.float_to_char(self.num_ch, 1.0)
         if not self.options.source == "file":
             g = self.u.get_gain_range()
@@ -487,15 +492,15 @@ class my_top_block(gr.top_block):
 
         #TODO -- add the calibration block after self.u
         if self.resamp != None:
-            self.connect(self.u, self.resamp, s2v)
-            self.flow_graph_1 = [resamp, s2v]
+            self.connect(self.u, self.resamp, power_cal)
+            self.flow_graph_1 = [resamp, power_cal]
         else:
-            self.connect(self.u, s2v)
-            self.flow_graph_1 = [s2v]
+            self.connect(self.u, power_cal)
+            self.flow_graph_1 = [power_cal]
 
-        add_const = blocks.add_const_ff(-100)
+        #add_const = blocks.add_const_ff(-100)
         # Connect the blocks together.
-        self.connect(s2v, ffter, c2mag, self.aggr, self.stats, W2dBm, f2c,
+        self.connect(power_cal, s2v, ffter, c2mag, self.aggr, self.stats, W2dBm, f2c,
                      self.sslsocket_sink)
         self.flow_graph_1 = self.flow_graph_1 + [ffter, c2mag, self.aggr,
                                                  self.stats, W2dBm, f2c,
