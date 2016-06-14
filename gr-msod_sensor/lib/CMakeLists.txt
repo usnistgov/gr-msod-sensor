@@ -22,7 +22,7 @@
 ########################################################################
 include(GrPlatform) #define LIB_SUFFIX
 
-include_directories(${Boost_INCLUDE_DIR})
+include_directories(${Boost_INCLUDE_DIR} ${MONGO_CLIENT_DIR}/include)
 link_directories(${Boost_LIBRARY_DIRS} ${MONGO_CLIENT_DIR}/lib)
 list(APPEND msod_sensor_sources
     bin_aggregator_ff_impl.cc
