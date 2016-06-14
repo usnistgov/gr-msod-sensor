@@ -388,12 +388,9 @@ class my_top_block(gr.top_block):
         else:
             self.lo_offset = 0
 
+        #Calibrate dBm (add self.options.power_offset)
 	power_cal = blocks.multiply_const_cc(self.options.power_offset)
         s2v = blocks.stream_to_vector(gr.sizeof_gr_complex, self.fft_size)
-	#power_cal = blocks.multiply_const_ff(self.options.power_offset)
-
-	#Calibrate dBm (add self.options.power_offset)
-	#power_cal = blocks.add_const_ff
 
         mywindow = filter.window.blackmanharris(self.fft_size)
         ffter = fft.fft_vcc(self.fft_size, True, mywindow, True)
