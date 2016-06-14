@@ -121,7 +121,7 @@ include_directories(
     ${CMAKE_BINARY_DIR}/include
     ${Boost_INCLUDE_DIRS}
     ${CPPUNIT_INCLUDE_DIRS}
-    ${MONGO_CLIENT_DIR}/include
+    ${MONGO_INCLUDE_DIR}
     ${CURL_INCLUDE_DIR}
 #    ${GNURADIO_RUNTIME_INCLUDE_DIRS}
     ${GNURADIO_ALL_INCLUDE_DIRS}
