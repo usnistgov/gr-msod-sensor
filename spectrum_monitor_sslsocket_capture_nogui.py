@@ -43,7 +43,6 @@ import traceback
 from multiprocessing import Process
 from msod_sensor import forensics
 
-import argparse
 import requests
 
 import urllib3
