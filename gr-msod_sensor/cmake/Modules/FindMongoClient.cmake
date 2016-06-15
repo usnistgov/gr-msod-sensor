@@ -13,7 +13,7 @@ INCLUDE(FindPkgConfig)
 
 
 FIND_LIBRARY(MONGO_CLIENT_LIBRARY
-    NAMES libmongoclient.a libmongo-client.a
+    NAMES libmongoclient.a
     HINTS $ENV{MONGO_CLIENT_DIR}/lib
     HINTS ${PC_MONGO_CLIENT_DIR}
     PATHS
