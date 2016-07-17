@@ -141,10 +141,20 @@ def parse_options():
                       default=2017,
                       help="Mongodb port")
     parser.add_option("",
-                      "--fft-rate",
-                      type="int",
-                      default=30,
-                      help="Set FFT update rate, [default=%default]")
+                      "--latitude",
+                      type="float",
+                      help="latitude")
+
+    parser.add_option("",
+                      "--longitude",
+                      type="float",
+                      help="longitude")
+
+    #parser.add_option("",
+    #                  "--fft-rate",
+    #                  type="int",
+    #                  default=30,
+    #                  help="Set FFT update rate, [default=%default]")
     parser.add_option("",
                       "--capture-duration",
                       type="eng_float",
@@ -292,23 +302,27 @@ class MyAdapter(HTTPAdapter):
                                        ssl_version=ssl.PROTOCOL_SSLv3)
 
 
-def read_configuration(sensor_id, dest_host):
+def read_configuration(sensor_id, dest_host, latitude, longitude):
     print 'host:', dest_host
     print 'Requestion port on:' + 'https://' + dest_host + ':443/sensordata/getStreamingPort/' + sensor_id
     result = {}
+    location = {}
     r = requests.post('https://' + dest_host +
                       ':443/sensordata/getStreamingPort/' + sensor_id,
                       verify=False)
-    json = r.json()
-    port = json["port"]
+    port = r.json()["port"]
     print 'socket port =', port
     print 'Get Sensor Config on:' + 'https://' + dest_host + ':443/sensordb/getSensorConfig/' + sensor_id
+    location["timestamp"] = time.time()
+    location["latitude"] = latitude
+    location["longitude"] = longitude
     r = requests.post(
         'https://' + dest_host + ':443/sensordb/getSensorConfig/' + sensor_id,
+        data = str(json.dumps(location)),
         verify=False)
-    #print 'server response:', r.text
-    json = r.json()
-    return json["sensorConfig"], port
+    print 'server response:', r.text
+    js = r.json()
+    return js["sensorConfig"], port,js["timeOffset"]
 
 
 class my_top_block(gr.top_block):
@@ -332,7 +346,7 @@ class my_top_block(gr.top_block):
         self.sys_msg = self.read_json_from_file('sensor.sys')
         self.data_msg = self.read_json_from_file('sensor.data')
         self.event_msg = self.read_json_from_file('sensor.event')
-        ts = long(round(getLocalUtcTimeStamp()))
+        ts =  time.time() + self.delta
         self.loc_msg['t'] = ts
         self.loc_msg['SensorID'] = self.sensorId
         self.loc_msg['SensorKey'] = self.sensorKey
@@ -442,7 +456,7 @@ class my_top_block(gr.top_block):
         print "VsqW_db", Vsq2W_dB
 
         # Convert from Watts to dBm.
-        W2dBm = blocks.nlog10_ff(10,self.num_ch, Vsq2W_dB + 30) # 0dBW = 30dBm, so +30
+        W2dBm = blocks.nlog10_ff(10,self.num_ch, Vsq2W_dB - 15 ) # 0dBW = 30dBm, so +30
         #Constant add fudge factor (moved to power calculation)
         #W2dBm = blocks.nlog10_ff(10, self.num_ch, self.options.power_offset + Vsq2W_dB)
 	
@@ -467,8 +481,8 @@ class my_top_block(gr.top_block):
 
         self.set_gain(self.options.gain)
 
-        delta = long(round(getLocalUtcTimeStamp() - time.time()))
-        print "delta = ", delta
+        #delta = long(round(getLocalUtcTimeStamp() - time.time()))
+        print "delta = ", self.delta
 
         chunksize = int(self.get_sample_rate() * self.options.capture_duration)
         capture_sink = myblocks.capture_sink(itemsize=gr.sizeof_gr_complex, 
@@ -477,7 +491,7 @@ class my_top_block(gr.top_block):
                capture_dir="/tmp", 
                mongodb_port=self.mongodb_port,
                event_url="https://" + self.dest_host + ":" + str(443) +  "/eventstream/postCaptureEvent", 
-               time_offset = delta)
+               time_offset = self.delta)
 
         self.initialize_message_headers()
         print json.dumps(self.event_msg, indent=4)
@@ -520,9 +534,10 @@ class my_top_block(gr.top_block):
     def is_file_source(self):
         return self.options.source == "file"
 
-    def __init__(self, source, resamp, options, config, port):
+    def __init__(self, source, resamp, options, config, port, delta):
         print "source = ", source
         print "options", options
+        self.delta = delta
         self.init_config(config)
         self.port = port
         self.session = requests.Session()
@@ -672,7 +687,7 @@ def start_main_loop():
     signal.signal(signal.SIGUSR1, sigusr1_handler)
     signal.signal(signal.SIGUSR2, sigusr2_handler)
     options, args = parse_options()
-    config, port = read_configuration(options.sensorId, options.dest_host)
+    config, port, delta = read_configuration(options.sensorId, options.dest_host, options.latitude, options.longitude)
     # Reading form a file?
     if options.source == "osmo":
         source, resamp = init_osmosdr(options, config)
@@ -692,8 +707,8 @@ def start_main_loop():
     while True:
         print "start_main_loop: starting main loop"
         # Note -- config can change so need to re-read.
-        config, port = read_configuration(options.sensorId, options.dest_host)
-        tb = my_top_block(source, resamp, options, config, port)
+        config, port, delta = read_configuration(options.sensorId, options.dest_host, options.latitude, options.longitude)
+        tb = my_top_block(source, resamp, options, config, port, delta)
         try:
             main_loop(tb)
         except KeyboardInterrupt:
