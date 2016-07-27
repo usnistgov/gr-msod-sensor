@@ -197,7 +197,8 @@ def init_osmosdr(options, config):
         sample_rate_set = False
         for p in u.get_sample_rates():
             if p.start() >= samp_rate:
-                print("sample_rates size " + u.get_sample_rates().size())
+                print("sample_rates size {}".format(
+                    u.get_sample_rates().size()))
                 sample_rate_set = True
                 u.set_sample_rate(float(p.start()))
                 break
@@ -257,7 +258,7 @@ def init_uhd(options, config):
     u.set_clock_rate(clock_rate)
     clock_rate = int(u.get_clock_rate())
 
-    print("init_uhd: setting sample rate " + samp_rate)
+    print("init_uhd: setting sample rate to {}".format(samp_rate))
     u.set_samp_rate(samp_rate)
     usrp_rate = u.get_samp_rate()
 
@@ -292,20 +293,18 @@ class MyAdapter(HTTPAdapter):
 
 
 def read_configuration(sensor_id, dest_host):
-    print('host: ' + dest_host)
-    print('Requesting port from: ' + 'https://' + dest_host +
-          ':443/sensordata/getStreamingPort/' + sensor_id)
-    r = requests.post('https://' + dest_host +
-                      ':443/sensordata/getStreamingPort/' + sensor_id,
-                      verify=False)
+    print('host: {}'.format(dest_host))
+    streaming_url = 'https://{}:443/sensordata/getStreamingPort/{}'
+    streaming_url = streaming_url.format(dest_host, sensor_id)
+    print('Requesting streaming port from {}'.format(streaming_url))
+    r = requests.post(streaming_url, verify=False)
     json = r.json()
     port = json["port"]
     print('socket port = {}'.format(port))
-    print('Get Sensor Config on:' + 'https://' + dest_host +
-          ':443/sensordb/getSensorConfig/' + sensor_id)
-    r = requests.post(
-        'https://' + dest_host + ':443/sensordb/getSensorConfig/' + sensor_id,
-        verify=False)
+    config_url = 'https://{}:443/sensordb/getSensorConfig/{}'
+    config_url = config_url.format(dest_host, sensor_id)
+    print('Requesting sensor config from {}'.format(config_url))
+    r = requests.post(config_url, verify=False)
     #print('server response: ' + r.text)
     json = r.json()
     return json["sensorConfig"], port
@@ -394,7 +393,7 @@ class my_top_block(gr.top_block):
         # Calculate bandwidth & center frequency from start/stop values
         self.bandwidth = self.stop_freq - self.start_freq
         self.center_freq = self.start_freq + round(self.bandwidth / 2)
-        print("self.center_freq " + self.center_freq)
+        print("self.center_freq {} ".format(self.center_freq))
 
         self.bin2ch_map = [0] * self.fft_size
         hz_per_bin = self.samp_rate / self.fft_size
@@ -432,7 +431,6 @@ class my_top_block(gr.top_block):
         # in Watts.  Assumes unit of USRP source is volts.
         impedance = 50.0   # ohms
         Vsq2W_dB = -10.0 * math.log10(self.fft_size * window_power * impedance)
-        print("VsqW_db" + Vsq2W_dB)
 
         # Convert from Watts to dBm. 0dBW = 30dBm, so +30
         W2dBm = blocks.nlog10_ff(10, self.num_ch, Vsq2W_dB + 30)
@@ -455,12 +453,12 @@ class my_top_block(gr.top_block):
         self.set_gain(self.options.gain)
 
         delta = long(round(getLocalUtcTimeStamp() - time.time()))
-        print("delta = " + delta)
+        print("time delta = {}".format(delta))
 
         chunksize = int(self.get_sample_rate() * self.options.capture_duration)
         srate = int(self.get_sample_rate())
-        event_url = ("https://{}:443/eventstream/postCaptureEvent".format(
-            self.dest_host))
+        event_url = 'https://{}:443/eventstream/postCaptureEvent'
+        event_url = event_url.format(self.dest_host)
         capture_sink = myblocks.capture_sink(itemsize=gr.sizeof_gr_complex,
                                              chunksize=chunksize,
                                              samp_rate=srate,
@@ -512,8 +510,8 @@ class my_top_block(gr.top_block):
         return self.options.source == "file"
 
     def __init__(self, source, resamp, options, config, port):
-        print("source = " + source)
-        print("options" + options)
+        print("source = {}".format(source))
+        print("options = {}".format(options))
         self.init_config(config)
         self.port = port
         self.session = requests.Session()
@@ -526,7 +524,7 @@ class my_top_block(gr.top_block):
         if not self.is_file_source():
             self.u = source
         else:
-            print("samp_rate " + self.samp_rate)
+            print("samp_rate = {}".format(self.samp_rate))
             u = blocks.throttle(itemsize=gr.sizeof_gr_complex,
                                 samples_per_sec=4 * self.samp_rate)
             self.connect(source, u)
@@ -570,7 +568,7 @@ class my_top_block(gr.top_block):
         """
 
         if self.options.source == "osmo":
-            print("set_freq:target_freq " + target_freq)
+            print("set_freq: target_freq = {}".format(target_freq))
             #self.u.set_center_freq(target_freq + self.lo_offset)
             self.u.set_center_freq(target_freq - self.lo_offset)
             freq = self.u.get_center_freq()
@@ -578,7 +576,7 @@ class my_top_block(gr.top_block):
             if freq == target_freq:
                 return True
             else:
-                print("actual freq " + freq)
+                print("actual freq  = {}".format(freq))
             return False
         elif self.options.source == "uhd":
             r = self.u.set_center_freq(uhd.tune_request(
@@ -644,7 +642,7 @@ class my_top_block(gr.top_block):
 def main_loop(tb):
     print('starting main loop')
     if not tb.set_freq(tb.center_freq):
-        print("Failed to set frequency to" + tb.center_freq)
+        print("Failed to set frequency to {}".format(tb.center_freq))
     print("Set frequency to {} MHz".format(tb.center_freq / 1e6))
     time.sleep(0.25)
     # Start flow graph
@@ -664,7 +662,7 @@ def start_main_loop():
     signal.signal(signal.SIGUSR2, sigusr2_handler)
     options, args = parse_options()
     config, port = read_configuration(options.sensorId, options.dest_host)
-    # Reading form a file?
+    # Reading from a file?
     if HAVE_OSMOSDR and options.source == "osmo":
         source, resamp = init_osmosdr(options, config)
     elif options.source == "uhd":
@@ -673,7 +671,7 @@ def start_main_loop():
         source = init_file_source(options)
         resamp = None
     else:
-        print("Unrecognized options options.source " + options.source)
+        print("Unrecognized options options.source {!r}".format(options.source))
         os._exit(-1)
 
     if options.analyze is not None:
@@ -698,7 +696,7 @@ def start_main_loop():
 
 
 def sigusr2_handler(signo, frame):
-    print("<<<<<<<<< got a signal " + str(signo))
+    print("<<<<<<<<< got signal {!s}".format(signo))
     global tb
     tb.stop()
     sys.exit(0)
@@ -708,7 +706,7 @@ def sigusr2_handler(signo, frame):
 def sigusr1_handler(signo, frame):
     time.sleep(1)
     signal.signal(signal.SIGUSR1, sigusr1_handler)
-    print("<<<<<<<<< got a signal " + str(signo))
+    print("<<<<<<<<< got signal {!s}".format(signo))
     if "tb" in globals():
         global tb
         print("stopping task block")

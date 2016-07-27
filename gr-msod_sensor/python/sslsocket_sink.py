@@ -19,7 +19,6 @@
 # Boston, MA 02110-1301, USA.
 #
 
-import numpy
 from gnuradio import gr
 from multiprocessing import Process
 import socket
@@ -29,10 +28,8 @@ import struct
 import sys
 import os
 import signal
-import time
 import traceback
 import forensics
-from threading import Thread
 
 
 def command_handler(trigger, sock, top_block, pid, host, sensorId):
@@ -134,9 +131,12 @@ class sslsocket_sink(gr.sync_block):
         self.send_obj(self.sys_msg)
         self.send_obj(self.loc_msg)
         self.send_obj(self.data_msg)
-        commandThread = Process(target=command_handler,
-                                args=(trigger, self.sock, top_block, pid, host,
-                                      sensorId))
+        commandThread = Process(target=command_handler, args=(self.trigger,
+                                                              self.sock,
+                                                              self.top_block,
+                                                              self.pid,
+                                                              self.host,
+                                                              self.sensorId))
         commandThread.start()
 
     def send_obj(self, obj):
