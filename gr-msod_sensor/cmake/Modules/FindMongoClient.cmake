@@ -21,7 +21,20 @@ FIND_LIBRARY(MONGO_CLIENT_LIBRARY
     /usr/local/lib
     /usr/lib
 )
+mark_as_advanced(MONGO_CLIENT_LIBRARY)
+
+find_path(MONGO_INCLUDE_DIR 
+    HINTS $ENV{MONGO_CLIENT_DIR}/include
+    NAMES mongo/client/dbclient.h
+    PATHS
+    ${MONGO_CLIENT_DIR}/include
+    /usr/local/include
+    /usr/include
+)
+
+mark_as_advanced(MONGO_INCLUDE_DIR)
 
 message(STATUS "MONGO_CLIENT_LIBRARY " ${MONGO_CLIENT_LIBRARY})
+message(STATUS "MONGO_INCLUDE_DIR " ${MONGO_INCLUDE_DIR})
 
 INCLUDE(FindPackageHandleStandardArgs)

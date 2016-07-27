@@ -22,8 +22,8 @@
 ########################################################################
 include(GrPlatform) #define LIB_SUFFIX
 
-include_directories(${Boost_INCLUDE_DIR} ${MONGO_CLIENT_DIR}/include)
-link_directories(${Boost_LIBRARY_DIRS} ${MONGO_CLIENT_DIR}/lib)
+include_directories(${Boost_INCLUDE_DIR} ${MONGO_INCLUDE_DIR})
+link_directories(${Boost_LIBRARY_DIRS})
 list(APPEND msod_sensor_sources
     bin_aggregator_ff_impl.cc
     bin_statistics_ff_impl.cc

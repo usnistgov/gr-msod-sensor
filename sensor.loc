@@ -1,10 +1,10 @@
 {
-    "Ver": "1.0.12", 
-    "Type": "Loc", 
-    "SensorKey": "30AD2C7", 
+    "Ver": "1.0.12",
+    "Type": "Loc",
+    "SensorKey": "30AD2C7",
     "Mobility": "Stationary",
-    "Lat": 39.994723, 
-    "Lon": -105.262032, 
-    "Alt": 5423, 
+    "Lat": 39.994723,
+    "Lon": -105.262032,
+    "Alt": 5423,
     "TimeZone": "America/Denver"
 }

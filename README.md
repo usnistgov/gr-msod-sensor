@@ -5,7 +5,21 @@ It includes coarse grained streaming/posting capability and the ability to
 log and analyze I/Q data when instructed to do so by an external agent
 via MSOD.
 
+Dependencies:
+ 
+   gnuradio 3.6 +
+   mongo-cxx-client 
+ 
+
 To build this code:
+
+1. Build dependencies:
+   
+   git clone mongo-cxx-driver  from github
+   git checkout 26compat
+   scons --full
+
+2. Build the code
 
     mkdir build
     cd build 
