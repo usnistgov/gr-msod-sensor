@@ -522,8 +522,8 @@ class my_top_block(gr.top_block):
         return self.options.source == "file"
 
     def __init__(self, source, resamp, options, config, port, delta):
-        print "source = ", source
-        print "options", options
+        print("source = {}".format(source))
+        print("options = {}".format(options))
         self.delta = delta
         self.init_config(config)
         self.port = port
