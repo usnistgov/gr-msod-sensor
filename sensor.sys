@@ -1,7 +1,7 @@
 {
     "Ver": "1.0.12", 
     "Type": "Sys", 
-    "SensorKey": "NaN", 
+    "SensorKey": "12345", 
     "t": 1387472400, 
     "Antenna": {
 	"Model": "Unknown (whip)",

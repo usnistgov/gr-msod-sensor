@@ -1,7 +1,7 @@
 {
     "Ver": "1.0.12", 
     "Type": "Loc", 
-    "SensorKey": "NaN", 
+    "SensorKey": "12345", 
     "Mobility": "Stationary",
     "Lat": 39.134375, 
     "Lon": -77.215337, 
