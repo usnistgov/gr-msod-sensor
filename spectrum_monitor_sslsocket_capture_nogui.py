@@ -270,7 +270,7 @@ def init_uhd(options, config):
 
     print("init_uhd: setting sample rate to {}".format(samp_rate))
     u.set_samp_rate(samp_rate)
-    usrp_rate = u.get_samp_rate()
+    usrp_rate = int(u.get_samp_rate())
 
     if usrp_rate != samp_rate:
         if usrp_rate < samp_rate:
@@ -308,8 +308,9 @@ def read_configuration(sensor_id, dest_host, latitude, longitude):
     streaming_url = streaming_url.format(dest_host, sensor_id)
     print('Requesting streaming port from {}'.format(streaming_url))
     r = requests.post(streaming_url, verify=False)
-    json = r.json()
-    port = json["port"]
+    location = {}
+    js = r.json()
+    port = js["port"]
     print('socket port = {}'.format(port))
     config_url = 'https://{}:443/sensordb/getSensorConfig/{}'
     config_url = config_url.format(dest_host, sensor_id)
@@ -319,8 +320,8 @@ def read_configuration(sensor_id, dest_host, latitude, longitude):
     location["longitude"] = longitude
     r = requests.post(config_url, data=str(json.dumps(location)), verify=False)
     #print('server response: ' + r.text)
-    json = r.json()
-    return json["sensorConfig"], port, json["timeOffset"]
+    js = r.json()
+    return js["sensorConfig"], port, js["timeOffset"]
 
 
 class my_top_block(gr.top_block):
@@ -385,10 +386,8 @@ class my_top_block(gr.top_block):
         else:
             self.use_usrp = self.file_source = False
 
-        if (self.options.source == "uhd" and self.options.lo_offset):
+        if self.options.lo_offset is not None:
             self.lo_offset = self.options.lo_offset
-        elif self.options.source == "uhd":
-            self.lo_offset = self.u.get_samp_rate() / 2.0
             print("LO offset set to {} MHz".format(self.lo_offset / 1e6))
         else:
             self.lo_offset = 0
@@ -409,7 +408,7 @@ class my_top_block(gr.top_block):
         print("self.center_freq {} ".format(self.center_freq))
 
         self.bin2ch_map = [0] * self.fft_size
-        hz_per_bin = self.samp_rate / self.fft_size
+        hz_per_bin = float(self.samp_rate) / self.fft_size
         channel_bw = hz_per_bin * round(self.bandwidth / self.num_ch /
                                         hz_per_bin)
         self.bandwidth = channel_bw * self.num_ch
@@ -506,10 +505,14 @@ class my_top_block(gr.top_block):
             self.connect(self.u, power_cal)
             self.flow_graph_1 = [power_cal]
 
+        self.skip = blocks.skiphead(gr.sizeof_float * self.fft_size, 10)
+        self.head = blocks.head(gr.sizeof_float * self.fft_size, 1)
+        self.vsink = blocks.vector_sink_f(1024)
+
         # Connect the blocks together.
         self.connect(power_cal, s2v, ffter, c2mag, self.aggr, self.stats,
                      W2dBm, f2c, self.sslsocket_sink)
-        self.flow_graph_1.append([ffter, c2mag, self.aggr, self.stats, W2dBm,
+        self.flow_graph_1.append([ffter, c2mag, self.stats, W2dBm,
                                   f2c, self.sslsocket_sink])
 
         # Second pipeline to the sink.
@@ -550,27 +553,6 @@ class my_top_block(gr.top_block):
         self.mongodb_port = options.mongod_port
         self.init_flow_graph()
 
-    #def disconnect_me(self):
-    #    try:
-    #        print("disconnecting flow graph")
-    #        self.stop()
-    #        self.sslsocket_sink.disconnect()
-    #        if self.options.source == "osmo":
-    #            self.u.get_sample_rates().stop()
-    #        elif self.options.source == "uhd":
-    #        self.u.stop()
-    #        self.disconnect(self.u)
-    #        if self.flow_graph_1:
-    #            apply(self.disconnect, tuple(self.flow_graph_1))
-    #        if self.flow_graph_2:
-    #            apply(self.disconnect, tuple(self.flow_graph_2))
-    #        print("done disconnecting flow graph")
-    #    except RuntimeError:
-    #        print("Source has no sample rates (wrong device arguments?).")
-    #        traceback.print_exc()
-    #        sys.exit(1)
-    #        os._exit(0)
-
     def set_freq(self, target_freq):
         """
         Set the center frequency we're interested in.
@@ -582,8 +564,7 @@ class my_top_block(gr.top_block):
 
         if self.options.source == "osmo":
             print("set_freq: target_freq = {}".format(target_freq))
-            #self.u.set_center_freq(target_freq + self.lo_offset)
-            self.u.set_center_freq(target_freq - self.lo_offset)
+            self.u.set_center_freq(target_freq)
             freq = self.u.get_center_freq()
             self.center_freq = freq
             if freq == target_freq:
@@ -740,7 +721,3 @@ if __name__ == '__main__':
         print("*******************************************************")
         print(" Ensure that mongodb is running on port 33000")
         print("*******************************************************")
-    # mychild = Process(target=start_main_loop)
-    # mychild.start()
-    # t = ThreadClass()
-    # t.start()

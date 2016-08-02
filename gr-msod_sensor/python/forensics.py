@@ -15,6 +15,7 @@ def analyze(algorithm, sensorId, timestamp, host,analysis_script):
     query = {"SensorID": sensorId, "t": {"$gte": timestamp}}
     print query
     iqsample = db.find_one(query)
+
     if iqsample != None:
         print "foundiqsample", iqsample
         del iqsample["_id"]
@@ -63,6 +64,9 @@ def garbage_collect(sensorId, timestamp):
 
 def run_forensics(sensorId, host, analysis_script):
     client = MongoClient("127.0.0.1", 33000)
+
+    print("Starting run_forensics")
+
     while True:
         db = client.iqcapture.dataMessages
         query = {"SensorID": sensorId}
@@ -85,7 +89,7 @@ def run_forensics(sensorId, host, analysis_script):
             try:
                p = subprocess.Popen([
                   '/usr/bin/python',
-                  analysis_script, 
+                  analysis_script,
                   "-f", str(centerFreq), "-s", str(samp_rate), "--fifoname",
                   fifoname, capture_file
                 ])
@@ -93,13 +97,12 @@ def run_forensics(sensorId, host, analysis_script):
                pipein = open(fifoname, "r")
                result_length = int(pipein.readline())
                result = pipein.read(result_length)
-               print result
                if result != None:
                   data = json.loads(result)
                   iqsample["forensicsReport"] = data
-                  r = requests.post('https://' + host +
-                                  ':443/eventstream/postForensics/' + sensorId,
-                                  verify=False,
+                  url = 'https://' + host + ':443/eventstream/postForensics/' + sensorId
+                  print "forensics url: {}".format(url)
+                  r = requests.post(url, verify=False,
                                   data=json.dumps(iqsample, indent=4))
                   if r.status_code != 200:
                       print "Post failed ", r.status_code
@@ -108,7 +111,7 @@ def run_forensics(sensorId, host, analysis_script):
                       del iqsample["forensicsReport"]
                       retval = client.iqcapture.dataMessages.remove(iqsample)
                       print retval
-              
+
                else:
                     print "Error processing sample"
             except:
