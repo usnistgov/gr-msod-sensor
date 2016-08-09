@@ -1,10 +1,10 @@
-{ "Ver": "1.0.12", 
-"Sys2Detect": "LTE", 
-"SensorKey": "30AD2C7", 
-"SensorID": "NTIACommSensor-1", 
-"mPar": {"fStart": 743320000, "fStop": 758680000, "sampRate":15.36e6}, 
-"Type": "Capture-Event", 
-"Comment": "Capture event", 
-"Sensitivity": "Low", 
+{ "Ver": "1.0.12",
+"Sys2Detect": "LTE",
+"SensorKey": "NaN",
+"SensorID": "UNKNOWN",
+"mPar": {"fStart": 703970000, "fStop": 714050000, "sampRate":10e6},
+"Type": "Capture-Event",
+"Comment": "Capture event",
+"Sensitivity": "Low",
 "mType": "IQ-Raw"
 }

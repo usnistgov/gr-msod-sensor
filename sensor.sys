@@ -1,21 +1,21 @@
 {
     "Ver": "1.0.12",
     "Type": "Sys",
-    "SensorKey": "30AD2C7",
+    "SensorKey": "12345",
     "t": 1387472400,
     "Antenna": {
-        "Model": "Unknown (whip)",
-        "fLow": "NaN",
-        "fHigh": "NaN",
-        "g": 2.0,
-        "bwH": 360.0,
-        "bwV": "NaN",
-        "AZ": "N/A",
-        "EL": 0.0,
-        "Pol": "VL",
-        "XSD": "NaN",
-        "VSWR": "NaN",
-        "lCable": 0.5
+    "Model": "Unknown (whip)",
+    "fLow": "NaN",
+    "fHigh": "NaN",
+    "g": 2.0,
+    "bwH": 360.0,
+    "bwV": "NaN",
+    "AZ": "N/A",
+    "EL": 0.0,
+    "Pol": "VL",
+    "XSD": "NaN",
+    "VSWR": "NaN",
+    "lCable": 0.5
     },
     "Preselector": {
         "fLowPassBPF": "NaN",
@@ -28,10 +28,10 @@
         "enrND": "NaN"
     },
     "COTSsensor": {
-        "Model": "Ettus USRP B210",
-        "fLow": 70e6,
-        "fHigh": 6000e6,
+        "Model": "Ettus USRP N210 SBX",
+        "fLow": 400e6,
+        "fHigh": 4400e6,
         "fn": 5.0,
-        "pMax": -15.0
+        "pMax": -10.0
     }
 }
