@@ -143,7 +143,7 @@ class sslsocket_sink(gr.sync_block):
         msg = json.dumps(obj)
         frmt = "=%ds" % len(msg)
         packed_msg = struct.pack(frmt, msg)
-        ascii_hdr = "%d\r" % len(packed_msg)
+        ascii_hdr = "%d\r\n" % len(packed_msg)
         self.sock.send(ascii_hdr)
         self.sock.send(packed_msg)
 
