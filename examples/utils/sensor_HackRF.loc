@@ -1,0 +1,12 @@
+{
+    "Ver": "1.0.12", 
+    "Type": "Loc", 
+    "SensorID": "HackRF", 
+    "SensorKey": "NaN", 
+    "t": 1387472400, 
+    "Mobility": "Stationary",
+    "Lat": 39.80, 
+    "Lon": -77.80, 
+    "Alt": 143.5, 
+    "TimeZone": "America/New_York"
+}

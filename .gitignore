@@ -1,0 +1,9 @@
+build/*
+*.pyc
+.cproject
+.project
+.pydevproject
+*.npy
+*.swp
+*~
+*.npy

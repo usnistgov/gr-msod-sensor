@@ -16,16 +16,18 @@
 # along with GNU Radio; see the file COPYING.  If not, write to
 # the Free Software Foundation, Inc., 51 Franklin Street,
 # Boston, MA 02110-1301, USA.
+
 install(FILES
-    msod_sensor_bin_aggregator_ff.xml
-    msod_sensor_bin_statistics_ff.xml
-    msod_sensor_file_descriptor_sink.xml
-    msod_sensor_file_descriptor_source.xml
-    msod_sensor_websocket_sink.xml
-    msod_sensor_sslsocket_sink.xml
-    msod_sensor_threshold_timestamp.xml
-    msod_sensor_capture_sink.xml
-    msod_sensor_iqcapture_sink.xml
-    msod_sensor_dummy_capture_trigger.xml
-    msod_sensor_level_capture_trigger.xml DESTINATION share/gnuradio/grc/blocks
+	msod_sensor_jsonfile_sink.xml
+    	msod_sensor_bin_aggregator.xml
+    	msod_sensor_bin_statistics.xml
+    	msod_sensor_file_descriptor_sink.xml
+    	msod_sensor_file_descriptor_source.xml
+    	msod_sensor_websocket_sink.xml
+    	msod_sensor_sslsocket_sink.xml
+    	msod_sensor_threshold_timestamp.xml
+    	msod_sensor_capture_sink.xml
+    	msod_sensor_iqcapture_sink.xml
+    	msod_sensor_dummy_capture_trigger.xml
+    	msod_sensor_level_capture_trigger.xml DESTINATION share/gnuradio/grc/blocks
 )

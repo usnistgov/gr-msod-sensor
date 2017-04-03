@@ -1,0 +1,57 @@
+<block>
+  <name>Bin aggregator</name>
+  <key>spectrum_latency_bin_aggregator</key>
+  <category>[spectrum_latency]</category>
+  <import>import spectrum_latency</import>
+  <make>spectrum_latency.bin_aggregator($input_vlen, $output_vlen, $samp_rate, $fft_size, $center_freq, $bandwidth, $channel_bw, $output_bin_index)</make>
+  <param>
+    <name>Input_vlen</name>
+    <key>input_vlen</key>
+    <type>raw</type>
+  </param>
+  <param>
+    <name>Output_vlen</name>
+    <key>output_vlen</key>
+    <type>raw</type>
+  </param>
+  <param>
+    <name>output_bin_index</name>
+    <key>output_bin_index</key>
+    <type>raw</type>
+  </param>
+  <param>
+    <name>Samp_rate</name>
+    <key>samp_rate</key>
+    <type>float</type>
+  </param>
+  <param>
+    <name>Fft_size</name>
+    <key>fft_size</key>
+    <type>raw</type>
+  </param>
+  <param>
+    <name>Center_freq</name>
+    <key>center_freq</key>
+    <type>float</type>
+  </param>
+  <param>
+    <name>Bandwidth</name>
+    <key>bandwidth</key>
+    <type>float</type>
+  </param>
+  <param>
+    <name>Channel_bw</name>
+    <key>channel_bw</key>
+    <type>float</type>
+  </param>
+  <sink>
+    <name>in</name>
+    <type>float</type>
+    <vlen>$input_vlen</vlen>
+  </sink>
+  <source>
+    <name>out</name>
+    <type>float</type>
+    <vlen>$output_vlen</vlen>
+  </source>
+</block>

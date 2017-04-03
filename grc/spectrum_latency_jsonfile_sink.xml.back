@@ -1,0 +1,62 @@
+<block>
+  <name>Jsonfile sink</name>
+  <key>spectrum_latency_jsonfile_sink</key>
+  <category>[spectrum_latency]</category>
+  <import>import spectrum_latency</import>
+  <make>spectrum_latency.jsonfile_sink($num_ch, $filename, $sensorLoc, $sensorSys, $sensor_id, $sensor_key, $center_freq, $bandwidth, $meas_duration, $atten)</make>
+  <param>
+    <name>Num_Ch</name>
+    <key>num_ch</key>
+    <type>int</type>
+  </param>
+  <param>
+    <name>Filename</name>
+    <key>filename</key>
+    <type>raw</type>
+  </param>
+  <param>
+    <name>Sensorloc</name>
+    <key>sensorLoc</key>
+    <type>raw</type>
+  </param>
+  <param>
+    <name>Sensorsys</name>
+    <key>sensorSys</key>
+    <type>raw</type>
+  </param>
+  <param>
+    <name>Sensor_id</name>
+    <key>sensor_id</key>
+    <type>raw</type>
+  </param>
+  <param>
+    <name>Sensor_key</name>
+    <key>sensor_key</key>
+    <type>raw</type>
+  </param>
+  <param>
+    <name>Center_Freq</name>
+    <key>center_freq</key>
+    <type>float</type>
+  </param>
+  <param>
+    <name>Bandwidth</name>
+    <key>bandwidth</key>
+    <type>float</type>
+  </param>
+  <param>
+    <name>Meas_duration</name>
+    <key>meas_duration</key>
+    <type>float</type>
+  </param>
+  <param>
+    <name>Atten</name>
+    <key>atten</key>
+    <type>float</type>
+  </param>
+  <sink>
+    <name>in</name>
+    <type>byte</type>
+    <vlen>$num_ch</vlen>
+  </sink>
+</block>

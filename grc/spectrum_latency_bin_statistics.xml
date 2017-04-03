@@ -1,0 +1,27 @@
+<block>
+  <name>Bin statistics</name>
+  <key>spectrum_latency_bin_statistics</key>
+  <category>[spectrum_latency]</category>
+  <import>import spectrum_latency</import>
+  <make>spectrum_latency.bin_statistics($vlen, $meas_period)</make>
+  <param>
+    <name>Vlen</name>
+    <key>vlen</key>
+    <type>raw</type>
+  </param>
+  <param>
+    <name>Meas_period</name>
+    <key>meas_period</key>
+    <type>raw</type>
+  </param>
+  <sink>
+    <name>in</name>
+    <type>float</type>
+    <vlen>$vlen</vlen>
+  </sink>
+  <source>
+    <name>out</name>
+    <type>float</type>
+    <vlen>$vlen</vlen>
+  </source>
+</block>
